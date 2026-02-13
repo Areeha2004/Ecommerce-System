@@ -84,7 +84,7 @@ export function AIChat() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed bottom-24 right-6 z-40 w-[420px] max-w-[calc(100vw-48px)] h-[650px] max-h-[calc(100vh-140px)] glass rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] border-white/20 flex flex-col overflow-hidden"
+            className="fixed bottom-24 right-6 z-[60] w-[420px] max-w-[calc(100vw-48px)] h-[650px] max-h-[calc(100vh-140px)] glass rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] border-white/20 flex flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="p-6 border-b border-border/10 bg-black/5 flex items-center justify-between">
