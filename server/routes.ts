@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { registerChatRoutes } from "./replit_integrations/chat";
-import { openai } from "./replit_integrations/image/client"; // Use the exported instance from image client
+import { getOpenAI } from "./replit_integrations/image/client";
 import { products } from "@shared/schema";
 
 export async function registerRoutes(
@@ -60,7 +60,7 @@ export async function registerRoutes(
         Tone: Professional but friendly. If the user mentions a specific occasion, be enthusiastic.
       `;
 
-      const completion = await openai.chat.completions.create({
+      const completion = await getOpenAI().chat.completions.create({
         model: "gpt-5.2",
         messages: [
           { role: "system", content: systemPrompt },
@@ -104,7 +104,7 @@ export async function registerRoutes(
         }
       `;
 
-      const completion = await openai.chat.completions.create({
+      const completion = await getOpenAI().chat.completions.create({
         model: "gpt-5.2",
         messages: [
           { role: "system", content: systemPrompt },
