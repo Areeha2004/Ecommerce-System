@@ -199,7 +199,7 @@ export async function registerRoutes(
       `;
 
       const completion = await getOpenAI().chat.completions.create({
-        model: "gpt-5.2",
+        model: "gpt-4o",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: message }
