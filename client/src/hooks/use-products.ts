@@ -8,9 +8,13 @@ export function useProducts(filters?: { category?: string; sort?: string; search
   return useQuery({
     queryKey,
     queryFn: async () => {
-      const url = filters 
-        ? `${api.products.list.path}?${new URLSearchParams(filters as Record<string, string>).toString()}`
-        : api.products.list.path;
+      const params = new URLSearchParams();
+      if (filters?.category && filters.category !== "all") params.append("category", filters.category);
+      if (filters?.sort && filters.sort !== "featured") params.append("sort", filters.sort);
+      if (filters?.search) params.append("search", filters.search);
+      
+      const queryString = params.toString();
+      const url = queryString ? `${api.products.list.path}?${queryString}` : api.products.list.path;
         
       const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to fetch products");

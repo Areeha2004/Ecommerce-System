@@ -11,29 +11,17 @@ export default function Home() {
   const [sortBy, setSortBy] = useState<string>("featured");
   const [searchQuery, setSearchQuery] = useState("");
   
-  // Convert "all" to undefined for the hook
-  const filters = {
-    category: activeCategory === "all" ? undefined : activeCategory,
-    sort: sortBy === "featured" ? undefined : sortBy,
-  };
+  const { data: products, isLoading, error } = useProducts({
+    category: activeCategory,
+    sort: sortBy,
+    search: searchQuery
+  });
 
-  const { data: products, isLoading, error } = useProducts(filters);
-
-  const filteredProducts = useMemo(() => {
-    if (!products) return [];
-    if (!searchQuery.trim()) return products;
-    
-    const query = searchQuery.toLowerCase();
-    return products.filter(p => 
-      p.name.toLowerCase().includes(query) || 
-      p.description.toLowerCase().includes(query) ||
-      p.category.toLowerCase().includes(query)
-    );
-  }, [products, searchQuery]);
+  const filteredProducts = products || [];
 
   // Categories derived from mock data logic or hardcoded for UI
   const categories = [
-    { id: "all", label: "All Products" },
+    { id: "all", label: "All" },
     { id: "Clothing", label: "Clothing" },
     { id: "Accessories", label: "Accessories" },
     { id: "Footwear", label: "Footwear" },

@@ -15,9 +15,29 @@ export async function registerRoutes(
 
   // --- Products ---
   app.get(api.products.list.path, async (req, res) => {
-    const products = await storage.getProducts();
-    // In a real DB we would filter here. For mock, we filter in memory if needed or just return all.
-    // Frontend handles filtering/sorting mostly for this "Client-side" feel.
+    let products = await storage.getProducts();
+    const { category, sort, search } = req.query;
+
+    if (category && category !== 'all') {
+      products = products.filter(p => p.category === category);
+    }
+
+    if (search) {
+      const query = String(search).toLowerCase();
+      products = products.filter(p => 
+        p.name.toLowerCase().includes(query) || 
+        p.description.toLowerCase().includes(query)
+      );
+    }
+
+    if (sort === 'price_asc') {
+      products.sort((a, b) => Number(a.price) - Number(b.price));
+    } else if (sort === 'price_desc') {
+      products.sort((a, b) => Number(b.price) - Number(a.price));
+    } else if (sort === 'rating') {
+      products.sort((a, b) => Number(b.rating) - Number(a.rating));
+    }
+
     res.json(products);
   });
 
