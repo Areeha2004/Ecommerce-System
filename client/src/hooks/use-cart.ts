@@ -66,7 +66,10 @@ export const useCart = create<CartState>()(
       
       toggleCart: () => set((state) => ({ isOpen: !state.isOpen })),
 
-      setDiscount: (code, amount) => set({ discountCode: code, discountAmount: amount }),
+      setDiscount: (code, amount) => {
+        set({ discountCode: code, discountAmount: amount });
+        // Trigger a toast or some feedback if possible, but we don't have access to useToast here
+      },
       
       cartTotal: () => {
         const { items } = get();

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Navigation } from "@/components/Navigation";
 import { ProductCard } from "@/components/ProductCard";
 import { AIChat } from "@/components/AIChat";
@@ -17,6 +17,21 @@ export default function Home() {
     sort: sortBy,
     search: searchQuery
   });
+
+  useEffect(() => {
+    const handleSearch = (e: any) => {
+      if (e.detail.query) setSearchQuery(e.detail.query);
+      if (e.detail.category) setActiveCategory(e.detail.category);
+    };
+    const handleSort = (e: any) => setSortBy(e.detail);
+    
+    window.addEventListener('search-products', handleSearch);
+    window.addEventListener('sort-products', handleSort);
+    return () => {
+      window.removeEventListener('search-products', handleSearch);
+      window.removeEventListener('sort-products', handleSort);
+    };
+  }, []);
 
   const filteredProducts = products || [];
 
