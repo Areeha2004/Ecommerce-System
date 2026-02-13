@@ -83,48 +83,58 @@ export function AIChat() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className="fixed bottom-24 right-6 z-40 w-[380px] max-w-[calc(100vw-48px)] h-[600px] max-h-[calc(100vh-120px)] bg-white rounded-2xl shadow-2xl border border-border flex flex-col overflow-hidden"
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            className="fixed bottom-24 right-6 z-40 w-[420px] max-w-[calc(100vw-48px)] h-[650px] max-h-[calc(100vh-140px)] glass rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] border-white/20 flex flex-col overflow-hidden"
           >
             {/* Header */}
-            <div className="p-4 border-b border-border bg-muted/30 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md">
-                <Sparkles className="w-5 h-5" />
+            <div className="p-6 border-b border-border/10 bg-black/5 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-primary to-accent flex items-center justify-center text-white shadow-xl rotate-3">
+                  <Sparkles className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-display font-bold text-xl text-foreground">The Clerk</h3>
+                  <p className="text-[10px] font-bold tracking-widest uppercase text-primary flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                    Neural Intelligence
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-semibold text-foreground">The Clerk</h3>
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                  Online & Ready to help
-                </p>
-              </div>
+              <button 
+                onClick={toggleClerk}
+                className="p-2 hover:bg-black/5 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide">
               {messages.map((msg) => (
-                <div
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
                   key={msg.id}
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[85%] p-3.5 rounded-2xl text-sm leading-relaxed ${
+                    className={`max-w-[85%] p-4 rounded-[1.5rem] text-sm leading-relaxed ${
                       msg.role === 'user'
-                        ? 'bg-primary text-primary-foreground rounded-br-sm'
-                        : 'bg-muted text-foreground rounded-bl-sm'
+                        ? 'bg-primary text-primary-foreground shadow-xl shadow-primary/20 rounded-tr-none'
+                        : 'bg-white/80 dark:bg-muted/50 backdrop-blur-sm border border-border/10 shadow-sm rounded-tl-none'
                     }`}
                   >
                     {msg.content}
                   </div>
-                </div>
+                </motion.div>
               ))}
               
               {isTyping && (
                 <div className="flex justify-start">
-                  <div className="bg-muted p-4 rounded-2xl rounded-bl-sm flex gap-1.5">
-                    <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <div className="bg-white/50 backdrop-blur-sm border border-border/10 px-5 py-3 rounded-2xl rounded-tl-none flex gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                   </div>
                 </div>
               )}
@@ -132,39 +142,23 @@ export function AIChat() {
             </div>
 
             {/* Input */}
-            <form onSubmit={handleSend} className="p-4 border-t border-border bg-white">
-              <div className="relative">
+            <form onSubmit={handleSend} className="p-6 pt-2 bg-transparent">
+              <div className="relative group">
                 <input
                   type="text"
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="Ask for recommendations..."
-                  className="w-full pl-4 pr-12 py-3 bg-muted/50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
+                  placeholder="Inquire with the Clerk..."
+                  className="w-full pl-6 pr-14 py-4 bg-white/50 dark:bg-black/20 backdrop-blur-md border border-border/20 rounded-2xl text-sm focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary/20 transition-all placeholder:text-muted-foreground/50"
                   data-testid="input-chat-message"
                 />
                 <button
                   type="submit"
                   disabled={!inputValue.trim() || isTyping}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-primary disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/10 rounded-lg transition-colors"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-primary text-white disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95 rounded-xl transition-all shadow-lg shadow-primary/20"
                   data-testid="button-send-message"
                 >
                   <Send className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="mt-2 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-                <button
-                  type="button"
-                  onClick={() => setInputValue("Suggest a summer outfit")}
-                  className="whitespace-nowrap px-3 py-1.5 rounded-lg bg-muted/50 hover:bg-muted text-xs font-medium text-muted-foreground transition-colors"
-                >
-                  Summer Outfit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setInputValue("Any discounts available?")}
-                  className="whitespace-nowrap px-3 py-1.5 rounded-lg bg-muted/50 hover:bg-muted text-xs font-medium text-muted-foreground transition-colors"
-                >
-                  Discounts?
                 </button>
               </div>
             </form>

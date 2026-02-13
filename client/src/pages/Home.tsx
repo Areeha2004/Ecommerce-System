@@ -5,6 +5,7 @@ import { AIChat } from "@/components/AIChat";
 import { CartDrawer } from "@/components/CartDrawer";
 import { useProducts } from "@/hooks/use-products";
 import { Loader2, Filter, Search, X } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState<string>("all");
@@ -34,108 +35,105 @@ export default function Home() {
       <AIChat />
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-16 md:pt-48 md:pb-32 px-4 overflow-hidden">
-        {/* Background Blob */}
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/10 rounded-full blur-3xl -z-10 animate-pulse" />
-        <div className="absolute top-20 left-10 w-[300px] h-[300px] bg-accent/10 rounded-full blur-3xl -z-10" />
+      <section className="relative min-h-[80vh] flex items-center justify-center px-4 pt-20 overflow-hidden bg-[#0a0a0b]">
+        {/* Dark Wash Hero Image Background */}
+        <div className="absolute inset-0 z-0">
+          <img 
+            src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&q=80&w=2000" 
+            className="w-full h-full object-cover opacity-60"
+            alt="Hero Background"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-[#0a0a0b]" />
+        </div>
 
-        <div className="max-w-7xl mx-auto text-center">
-          <h1 className="font-display text-5xl md:text-7xl font-bold text-foreground mb-6 leading-tight text-balance">
-            Curated Essentials for <br />
-            <span className="text-primary relative inline-block">
-              Modern Living
-              <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary/20" viewBox="0 0 100 10" preserveAspectRatio="none">
-                <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
-              </svg>
-            </span>
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-            Discover our collection of premium goods. Not sure what you need? 
-            Chat with our AI Clerk for personalized recommendations.
-          </p>
+        <div className="relative z-10 max-w-7xl mx-auto text-center space-y-8">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <h1 className="font-display text-6xl md:text-8xl font-bold text-white mb-6 leading-[1.1]">
+              Elevate Your <br />
+              <span className="text-white/90 italic font-medium">Daily Rituals</span>
+            </h1>
+            <p className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto mb-12 font-light leading-relaxed">
+              Experience a meticulously curated collection of premium essentials. 
+              Refined by design, guided by intelligence.
+            </p>
+          </motion.div>
           
-          {/* Aesthetic Search Bar */}
-          <div className="max-w-xl mx-auto relative mb-12 group">
-            <div className="absolute inset-0 bg-primary/5 rounded-2xl blur-xl group-focus-within:bg-primary/10 transition-colors" />
-            <div className="relative flex items-center bg-white border border-border rounded-2xl shadow-sm hover:shadow-md focus-within:ring-4 focus-within:ring-primary/5 focus-within:border-primary transition-all overflow-hidden p-1">
-              <div className="pl-4 flex items-center text-muted-foreground">
-                <Search className="w-5 h-5" />
-              </div>
-              <input
-                type="text"
-                placeholder="Search premium goods..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 px-4 py-3 bg-transparent border-none outline-none text-base placeholder:text-muted-foreground/60"
-              />
-              {searchQuery && (
-                <button 
-                  onClick={() => setSearchQuery("")}
-                  className="p-2 hover:bg-muted rounded-xl text-muted-foreground transition-colors mr-1"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          </div>
-          
-          <div className="flex justify-center gap-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.4, duration: 0.8 }}
+            className="flex flex-col sm:flex-row justify-center gap-4"
+          >
             <button 
               onClick={() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' })}
-              className="px-8 py-4 bg-foreground text-background rounded-xl font-semibold hover:bg-foreground/90 transition-all hover:scale-105 shadow-lg active:scale-95"
+              className="px-10 py-4 bg-white text-black rounded-full font-medium hover:bg-white/90 transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-white/10"
             >
-              Start Browsing
+              Explore Collection
             </button>
             <button 
               onClick={() => window.dispatchEvent(new CustomEvent('toggle-clerk'))}
-              className="px-8 py-4 bg-white border border-border rounded-xl font-semibold hover:bg-muted transition-all text-foreground shadow-sm hover:scale-105 active:scale-95"
+              className="px-10 py-4 glass text-white rounded-full font-medium hover:bg-white/10 transition-all hover:scale-105 active:scale-95"
             >
-              Talk to Clerk
+              Consult the Clerk
             </button>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Products Section */}
-      <section id="products" className="py-16 md:py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Filters */}
-        <div className="flex flex-col md:flex-row justify-between items-center mb-12 gap-6">
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 w-full md:w-auto no-scrollbar">
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
-                className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-all whitespace-nowrap hover:scale-105 active:scale-95 ${
-                  activeCategory === cat.id
-                    ? "bg-foreground text-background shadow-lg scale-105"
-                    : "bg-white text-muted-foreground hover:bg-muted border border-border shadow-sm"
-                }`}
-              >
-                {cat.label}
-              </button>
-            ))}
-          </div>
+      <section id="products" className="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col space-y-12">
+          {/* Header & Search */}
+          <div className="flex flex-col md:flex-row justify-between items-end gap-8 border-b border-border/50 pb-12">
+            <div className="space-y-4 max-w-md">
+              <h2 className="text-4xl font-bold">The Catalog</h2>
+              <p className="text-muted-foreground">Filter by category or search our refined inventory.</p>
+              
+              <div className="relative group">
+                <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 bg-muted/50 border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all placeholder:font-light"
+                />
+              </div>
+            </div>
 
-          <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-            <div className="relative group min-w-[180px]">
+            {/* Filters */}
+            <div className="flex flex-wrap items-center gap-3">
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all ${
+                    activeCategory === cat.id
+                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+              <div className="h-6 w-px bg-border/50 mx-2" />
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="w-full appearance-none pl-10 pr-10 py-2.5 bg-white border border-border rounded-xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-primary/5 cursor-pointer hover:border-primary/50 transition-all shadow-sm hover:shadow-md"
+                className="bg-transparent text-sm font-medium focus:outline-none cursor-pointer hover:text-primary transition-colors pr-2"
               >
-                <option value="featured">✨ Featured</option>
-                <option value="price_asc">💰 Price: Low to High</option>
-                <option value="price_desc">🏷️ Price: High to Low</option>
+                <option value="featured">Featured</option>
+                <option value="price_asc">Price: Low-High</option>
+                <option value="price_desc">Price: High-Low</option>
+                <option value="rating">Top Rated</option>
               </select>
-              <Filter className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
-                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                </svg>
-              </div>
             </div>
           </div>
+
         </div>
 
         {/* Grid */}
