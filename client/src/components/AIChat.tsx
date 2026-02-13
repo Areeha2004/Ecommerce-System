@@ -1,15 +1,26 @@
 import { useState, useRef, useEffect } from "react";
-import { useClerk } from "@/hooks/use-clerk";
-import { MessageCircle, X, Send, Sparkles, ShoppingBag } from "lucide-react";
+import { MessageCircle, X, Send, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useCart } from "@/hooks/use-cart";
 import { useLocation } from "wouter";
 
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+}
+
 export function AIChat() {
-  const { messages, isTyping, isOpen, sendMessage, toggleClerk } = useClerk();
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "1",
+      role: "assistant",
+      content: "Hello! I'm The Clerk, your personal shopper. How can I help you today?",
+    },
+  ]);
   const [inputValue, setInputValue] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { items } = useCart();
   const [location] = useLocation();
 
   useEffect(() => {
@@ -20,18 +31,29 @@ export function AIChat() {
     e?.preventDefault();
     if (!inputValue.trim()) return;
 
-    const message = inputValue;
-    setInputValue("");
-    
-    // Provide context to the clerk
-    const context = {
-      currentPage: location,
-      cartItems: items.map(i => i.name),
-      cartTotal: items.reduce((acc, i) => acc + (Number(i.price) * i.quantity), 0)
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: inputValue,
     };
 
-    await sendMessage(message, context);
+    setMessages((prev) => [...prev, userMessage]);
+    setInputValue("");
+    setIsTyping(true);
+
+    // Simulate "The Clerk" response
+    setTimeout(() => {
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: `I'm currently in simulation mode, but I hear you! You're on ${location}. Soon I'll be able to help you find products and even negotiate prices!`,
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
+      setIsTyping(false);
+    }, 1000);
   };
+
+  const toggleClerk = () => setIsOpen(!isOpen);
 
   return (
     <>
@@ -43,6 +65,7 @@ export function AIChat() {
         }`}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
+        data-testid="button-toggle-chat"
       >
         {isOpen ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
       </motion.button>
@@ -63,7 +86,7 @@ export function AIChat() {
                 <Sparkles className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-display font-semibold text-foreground">Shop Assistant</h3>
+                <h3 className="font-semibold text-foreground">The Clerk</h3>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                   Online & Ready to help
@@ -111,11 +134,13 @@ export function AIChat() {
                   onChange={(e) => setInputValue(e.target.value)}
                   placeholder="Ask for recommendations..."
                   className="w-full pl-4 pr-12 py-3 bg-muted/50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
+                  data-testid="input-chat-message"
                 />
                 <button
                   type="submit"
                   disabled={!inputValue.trim() || isTyping}
                   className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-primary disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/10 rounded-lg transition-colors"
+                  data-testid="button-send-message"
                 >
                   <Send className="w-4 h-4" />
                 </button>
