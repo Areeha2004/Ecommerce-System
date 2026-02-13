@@ -27,6 +27,12 @@ export function AIChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping, isOpen]);
 
+  useEffect(() => {
+    const handleToggle = () => toggleClerk();
+    window.addEventListener('toggle-clerk', handleToggle);
+    return () => window.removeEventListener('toggle-clerk', handleToggle);
+  }, [isOpen]);
+
   const handleSend = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!inputValue.trim()) return;
