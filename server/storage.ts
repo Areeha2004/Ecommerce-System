@@ -1,4 +1,6 @@
-import { type User, type InsertUser, type Product } from "@shared/schema";
+export type User = { id: number; username: string };
+export type InsertUser = { username: string };
+import { type Product } from "@shared/schema";
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
