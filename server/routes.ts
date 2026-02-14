@@ -154,7 +154,7 @@ export async function registerRoutes(
       const choice = response.choices[0];
       
       // Handle the case where the model responds with content and no tool calls
-      if (choice.finish_reason === "stop") {
+      if (!choice.message.tool_calls) {
         return res.json({
           role: "assistant",
           content: choice.message.content
