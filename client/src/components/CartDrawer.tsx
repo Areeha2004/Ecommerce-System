@@ -1,5 +1,5 @@
 import { useCart } from "@/hooks/use-cart";
-import { X, Minus, Plus, Trash2, Tag } from "lucide-react";
+import { X, Minus, Plus, ShoppingBag, Trash2, Tag } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import { useState } from "react";

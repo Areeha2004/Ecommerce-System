@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { Navigation } from "@/components/Navigation";
 import { ProductCard } from "@/components/ProductCard";
-import { AIChat } from "@/components/AIChat";
 import { CartDrawer } from "@/components/CartDrawer";
 import { useProducts } from "@/hooks/use-products";
 import { Loader2, Filter, Search, X } from "lucide-react";
@@ -11,6 +10,16 @@ export default function Home() {
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("featured");
   const [searchQuery, setSearchQuery] = useState("");
+  const normalizeCategory = (raw: string): string => {
+    const value = raw.trim().toLowerCase();
+    if (value === "all") return "all";
+    if (value === "clothing") return "Clothing";
+    if (value === "accessories") return "Accessories";
+    if (value === "footwear") return "Footwear";
+    return "all";
+  };
+  const hasActiveFilters =
+    activeCategory !== "all" || sortBy !== "featured" || searchQuery.trim().length > 0;
   
   const { data: products, isLoading, error } = useProducts({
     category: activeCategory,
@@ -20,8 +29,12 @@ export default function Home() {
 
   useEffect(() => {
     const handleSearch = (e: any) => {
-      if (e.detail.query) setSearchQuery(e.detail.query);
-      if (e.detail.category) setActiveCategory(e.detail.category);
+      if (Object.prototype.hasOwnProperty.call(e.detail, "query")) {
+        setSearchQuery(String(e.detail.query ?? ""));
+      }
+      if (Object.prototype.hasOwnProperty.call(e.detail, "category")) {
+        setActiveCategory(normalizeCategory(String(e.detail.category ?? "all")));
+      }
     };
     const handleSort = (e: any) => setSortBy(e.detail);
     
@@ -32,6 +45,23 @@ export default function Home() {
       window.removeEventListener('sort-products', handleSort);
     };
   }, []);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem("clerk-activity");
+      const parsed = raw ? JSON.parse(raw) : {};
+      window.localStorage.setItem(
+        "clerk-activity",
+        JSON.stringify({
+          ...parsed,
+          activeCategory,
+          preferredSort: sortBy,
+        }),
+      );
+    } catch {
+      // Ignore localStorage failures.
+    }
+  }, [activeCategory, sortBy]);
 
   const filteredProducts = products || [];
 
@@ -47,7 +77,6 @@ export default function Home() {
     <div className="min-h-screen bg-background font-sans">
       <Navigation />
       <CartDrawer />
-      <AIChat />
 
       {/* Hero Section */}
       <section className="relative min-h-[80vh] flex items-center justify-center px-4 pt-20 overflow-hidden bg-[#0a0a0b]">
@@ -146,6 +175,18 @@ export default function Home() {
                 <option value="price_desc">Price: High-Low</option>
                 <option value="rating">Top Rated</option>
               </select>
+              {hasActiveFilters && (
+                <button
+                  onClick={() => {
+                    setActiveCategory("all");
+                    setSortBy("featured");
+                    setSearchQuery("");
+                  }}
+                  className="px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider bg-muted/70 hover:bg-muted text-muted-foreground"
+                >
+                  Reset
+                </button>
+              )}
             </div>
           </div>
 

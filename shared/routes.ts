@@ -49,7 +49,10 @@ export const api = {
       responses: {
         200: z.object({
           message: z.string(),
+          content: z.string().optional(),
           action: z.any().optional(), // 'update_filter', 'add_to_cart', 'apply_discount'
+          actions: z.array(z.any()).optional(),
+          products: z.array(z.any()).optional(),
           data: z.any().optional(),
         }),
       },

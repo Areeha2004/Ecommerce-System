@@ -1,9 +1,8 @@
 import { useCart } from "@/hooks/use-cart";
 import { Navigation } from "@/components/Navigation";
-import { AIChat } from "@/components/AIChat";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { Check, CreditCard, Lock } from "lucide-react";
+import { Check, CreditCard, Loader2, Lock } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -51,7 +50,6 @@ export default function Checkout() {
   return (
     <div className="min-h-screen bg-muted/30 pb-20">
       <Navigation />
-      <AIChat />
 
       <main className="pt-32 max-w-4xl mx-auto px-4">
         <h1 className="font-display text-3xl font-bold mb-8">Checkout</h1>

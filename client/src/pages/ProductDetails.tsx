@@ -3,10 +3,45 @@ import { useProduct } from "@/hooks/use-products";
 import { useCart } from "@/hooks/use-cart";
 import { Navigation } from "@/components/Navigation";
 import { CartDrawer } from "@/components/CartDrawer";
-import { AIChat } from "@/components/AIChat";
 import { Loader2, Star, ShieldCheck, Truck, RotateCcw } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+
+function colorToCss(color: string): string {
+  const normalized = color.trim().toLowerCase();
+  const map: Record<string, string> = {
+    white: "#f5f5f5",
+    black: "#111111",
+    beige: "#d5c3a1",
+    navy: "#1f2a44",
+    olive: "#708238",
+    khaki: "#c3b091",
+    brown: "#7a4e2d",
+    tan: "#d2b48c",
+    red: "#c62828",
+    blue: "#1e5aa8",
+    pink: "#d86f9f",
+    grey: "#7a7a7a",
+    gray: "#7a7a7a",
+    gold: "#b08d57",
+    silver: "#a8a8a8",
+    natural: "#d8c3a5",
+    striped: "repeating-linear-gradient(45deg, #1f2a44 0 8px, #f5f5f5 8px 16px)",
+    tortoise: "#6d4c41",
+    cognac: "#9a5a31",
+    camel: "#c19a6b",
+    "light wash": "#8bb5d9",
+    "dark wash": "#2a3f5f",
+    "light blue": "#8ab6e8",
+    "floral red": "linear-gradient(135deg, #b73a3a, #f5b3b3)",
+    "floral blue": "linear-gradient(135deg, #2f5ea8, #a9c8f2)",
+    "silver/black": "linear-gradient(135deg, #c0c0c0 0 50%, #111111 50% 100%)",
+    "gold/brown": "linear-gradient(135deg, #b08d57 0 50%, #7a4e2d 50% 100%)",
+  };
+
+  if (map[normalized]) return map[normalized];
+  return "#9aa0a6";
+}
 
 export default function ProductDetails() {
   const { id } = useParams();
@@ -15,6 +50,35 @@ export default function ProductDetails() {
   
   const [quantity, setQuantity] = useState(1);
   const [selectedColor, setSelectedColor] = useState<string>("");
+
+  useEffect(() => {
+    if (!product) return;
+
+    try {
+      const raw = window.localStorage.getItem("clerk-activity");
+      const parsed = raw ? JSON.parse(raw) : {};
+      const current: number[] = Array.isArray(parsed.recentlyViewedProductIds)
+        ? parsed.recentlyViewedProductIds
+        : [];
+      const updated = [...current.filter((id) => id !== product.id), product.id].slice(-15);
+
+      window.localStorage.setItem(
+        "clerk-activity",
+        JSON.stringify({
+          recentlyViewedProductIds: updated,
+        }),
+      );
+    } catch {
+      // Ignore localStorage failures.
+    }
+  }, [product]);
+
+  useEffect(() => {
+    if (!product) return;
+    if (!selectedColor && product.colors && product.colors.length > 0) {
+      setSelectedColor(product.colors[0]);
+    }
+  }, [product, selectedColor]);
 
   if (isLoading) {
     return (
@@ -33,16 +97,10 @@ export default function ProductDetails() {
     );
   }
 
-  // Ensure color selection default
-  if (!selectedColor && product.colors && product.colors.length > 0) {
-    setSelectedColor(product.colors[0]);
-  }
-
   return (
     <div className="min-h-screen bg-background pb-20">
       <Navigation />
       <CartDrawer />
-      <AIChat />
 
       <main className="pt-32 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
@@ -110,13 +168,14 @@ export default function ProductDetails() {
                   <button
                     key={color}
                     onClick={() => setSelectedColor(color)}
+                    title={color}
                     className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all ${
                       selectedColor === color ? "border-primary scale-110" : "border-transparent hover:scale-105"
                     }`}
                   >
                     <div 
                       className="w-8 h-8 rounded-full border border-border shadow-sm"
-                      style={{ backgroundColor: color.toLowerCase() }}
+                      style={{ background: colorToCss(color) }}
                     />
                   </button>
                 ))}
