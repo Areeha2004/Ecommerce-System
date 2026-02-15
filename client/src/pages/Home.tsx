@@ -10,6 +10,7 @@ export default function Home() {
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("featured");
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterSource, setFilterSource] = useState<"user" | "ai">("user");
   const normalizeCategory = (raw: string): string => {
     const value = raw.trim().toLowerCase();
     if (value === "all") return "all";
@@ -35,8 +36,16 @@ export default function Home() {
       if (Object.prototype.hasOwnProperty.call(e.detail, "category")) {
         setActiveCategory(normalizeCategory(String(e.detail.category ?? "all")));
       }
+      setFilterSource(e.detail?.source === "ai" ? "ai" : "user");
     };
-    const handleSort = (e: any) => setSortBy(e.detail);
+    const handleSort = (e: any) => {
+      const detail = e.detail;
+      const nextSort = typeof detail === "string" ? detail : detail?.sortBy;
+      if (nextSort) {
+        setSortBy(nextSort);
+      }
+      setFilterSource(detail?.source === "ai" ? "ai" : "user");
+    };
     
     window.addEventListener('search-products', handleSearch);
     window.addEventListener('sort-products', handleSort);
@@ -62,6 +71,24 @@ export default function Home() {
       // Ignore localStorage failures.
     }
   }, [activeCategory, sortBy]);
+
+  useEffect(() => {
+    if (isLoading || error || filterSource !== "ai") return;
+    if (!products) return;
+    if (products.length > 0) return;
+
+    if (searchQuery.trim()) {
+      setSearchQuery("");
+      return;
+    }
+    if (activeCategory !== "all") {
+      setActiveCategory("all");
+      return;
+    }
+    if (sortBy !== "featured") {
+      setSortBy("featured");
+    }
+  }, [products, isLoading, error, filterSource, searchQuery, activeCategory, sortBy]);
 
   const filteredProducts = products || [];
 
@@ -143,7 +170,10 @@ export default function Home() {
                   type="text"
                   placeholder="Search..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setFilterSource("user");
+                  }}
                   className="w-full pl-12 pr-4 py-3 bg-muted/50 border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all placeholder:font-light"
                 />
               </div>
@@ -154,7 +184,10 @@ export default function Home() {
               {categories.map((cat) => (
                 <button
                   key={cat.id}
-                  onClick={() => setActiveCategory(cat.id)}
+                  onClick={() => {
+                    setActiveCategory(cat.id);
+                    setFilterSource("user");
+                  }}
                   className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all ${
                     activeCategory === cat.id
                       ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
@@ -167,7 +200,10 @@ export default function Home() {
               <div className="h-6 w-px bg-border/50 mx-2" />
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+                onChange={(e) => {
+                  setSortBy(e.target.value);
+                  setFilterSource("user");
+                }}
                 className="bg-transparent text-sm font-medium focus:outline-none cursor-pointer hover:text-primary transition-colors pr-2"
               >
                 <option value="featured">Featured</option>
@@ -181,6 +217,7 @@ export default function Home() {
                     setActiveCategory("all");
                     setSortBy("featured");
                     setSearchQuery("");
+                    setFilterSource("user");
                   }}
                   className="px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider bg-muted/70 hover:bg-muted text-muted-foreground"
                 >

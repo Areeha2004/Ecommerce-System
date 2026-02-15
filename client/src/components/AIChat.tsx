@@ -16,6 +16,7 @@ type ChatProductCard = {
   rating: number;
   reviewsCount: number;
   category: string;
+  vibes?: string[];
   stock: number;
   image: string;
   url: string;
@@ -25,6 +26,7 @@ type ChatAction =
   | { type: "search_products"; query?: string; category?: string }
   | { type: "sort_products"; sortBy: "price_asc" | "price_desc" | "rating" }
   | { type: "add_to_cart"; productId: number; quantity: number }
+  | { type: "navigate_checkout" }
   | { type: "apply_coupon"; code: string; discountAmount: number; reason?: string };
 
 type ChatResponse = {
@@ -146,9 +148,24 @@ export function AIChat() {
   const runActions = async (actions: ChatAction[], suggestedProducts: ChatProductCard[]) => {
     for (const action of actions) {
       if (action.type === "search_products") {
-        window.dispatchEvent(new CustomEvent("search-products", { detail: { query: action.query, category: action.category } }));
+        window.dispatchEvent(
+          new CustomEvent("search-products", {
+            detail: {
+              query: action.query,
+              category: action.category,
+              source: "ai",
+            },
+          }),
+        );
       } else if (action.type === "sort_products") {
-        window.dispatchEvent(new CustomEvent("sort-products", { detail: action.sortBy }));
+        window.dispatchEvent(
+          new CustomEvent("sort-products", {
+            detail: {
+              sortBy: action.sortBy,
+              source: "ai",
+            },
+          }),
+        );
       } else if (action.type === "add_to_cart") {
         let product = allProducts?.find((p) => p.id === action.productId);
         if (!product) {
@@ -172,15 +189,22 @@ export function AIChat() {
           toast({
             title: "Added to cart",
             description: `${product.name} x${quantity}`,
+            className: "border-primary/30 shadow-2xl",
           });
         }
+      } else if (action.type === "navigate_checkout") {
+        setLocation("/checkout");
+        setIsOpen(false);
       } else if (action.type === "apply_coupon") {
         setDiscount(action.code, action.discountAmount);
+        const isDiscount = action.discountAmount > 0;
+        const isNoDiscount = action.discountAmount === 0;
         toast({
-          title: action.discountAmount >= 0 ? "Coupon applied" : "Price adjusted",
-          description:
-            action.discountAmount >= 0
-              ? `${action.code} saved ${action.discountAmount}%`
+          title: isDiscount ? "Coupon applied" : isNoDiscount ? "No discount applied" : "Price adjusted",
+          description: isDiscount
+            ? `${action.code} saved ${action.discountAmount}%`
+            : isNoDiscount
+              ? "Tone-based policy did not allow a discount."
               : `${action.code} increased price by ${Math.abs(action.discountAmount)}%`,
         });
       }
@@ -336,6 +360,18 @@ export function AIChat() {
                               <span>•</span>
                               <span>{product.category}</span>
                             </div>
+                            {Array.isArray(product.vibes) && product.vibes.length > 0 && (
+                              <div className="flex gap-1 mt-2">
+                                {product.vibes.slice(0, 2).map((vibe) => (
+                                  <span
+                                    key={`${product.id}-${vibe}`}
+                                    className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary uppercase tracking-wide"
+                                  >
+                                    {vibe}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                             <div className="text-[11px] mt-1 text-muted-foreground">{product.reviewsCount} reviews</div>
                             <div className="text-[11px] mt-1 text-muted-foreground">Stock: {product.stock}</div>
                             <div className="flex items-center justify-between mt-2">

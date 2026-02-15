@@ -14,6 +14,7 @@ type ClerkAction =
   | { type: "search_products"; query?: string; category?: string }
   | { type: "sort_products"; sortBy: "price_asc" | "price_desc" | "rating" }
   | { type: "add_to_cart"; productId: number; quantity: number }
+  | { type: "navigate_checkout" }
   | { type: "apply_coupon"; code: string; discountAmount: number; reason?: string };
 
 type ProductCardData = {
@@ -24,6 +25,7 @@ type ProductCardData = {
   rating: number;
   reviewsCount: number;
   category: string;
+  vibes: string[];
   stock: number;
   image: string;
   url: string;
@@ -37,6 +39,7 @@ type ShopperProfile = {
   lastMentionedProductId: number | null;
   lastShownProductIds: number[];
   lastQuery: string;
+  awaitingCheckoutConfirmation: boolean;
 };
 
 const shopperProfiles = new Map<string, ShopperProfile>();
@@ -76,6 +79,7 @@ function getOrCreateProfile(sessionId: string): ShopperProfile {
     lastMentionedProductId: null,
     lastShownProductIds: [],
     lastQuery: "",
+    awaitingCheckoutConfirmation: false,
   };
   shopperProfiles.set(sessionId, created);
   return created;
@@ -90,6 +94,7 @@ function toProductCard(product: Product): ProductCardData {
     rating: Number(product.rating),
     reviewsCount: Math.max(24, Math.round(Number(product.rating) * 30)),
     category: product.category,
+    vibes: inferProductVibes(product),
     stock: product.stock,
     image: product.image,
     url: `/product/${product.id}`,
@@ -129,22 +134,13 @@ function semanticSearchProducts(
     .map((product) => {
       const haystack = `${product.name} ${product.description} ${product.category}`.toLowerCase();
       let score = 0;
+      const productTypes = inferProductTypes(product);
+      const productVibes = inferProductVibes(product);
 
       for (const token of tokens) {
         if (haystack.includes(token)) score += 2;
-      }
-
-      if (q.includes("summer") || q.includes("italy") || q.includes("wedding")) {
-        if (/(cashmere|boots|wool|heavy|sweater)/i.test(product.name + " " + product.description)) {
-          score -= 10;
-        }
-        if (["Clothing", "Accessories"].includes(product.category)) score += 3;
-        if (/(linen|sunglass|dress|shirt|blazer|loafer)/i.test(product.name + " " + product.description)) score += 3;
-        if (/(cashmere|boots|sweater)/i.test(product.name + " " + product.description)) score -= 2;
-      }
-
-      if (q.includes("cheap") || q.includes("cheaper") || q.includes("budget")) {
-        score += Math.max(0, 200 - Number(product.price)) / 30;
+        if (productTypes.some((t) => t.includes(token) || token.includes(t))) score += 2.5;
+        if (productVibes.some((v) => v.includes(token) || token.includes(v))) score += 2;
       }
 
       if (options?.profile?.viewedCategories.includes(product.category)) {
@@ -167,6 +163,353 @@ function semanticSearchProducts(
     .map((entry) => entry.product);
 
   return scored;
+}
+
+type IntentSignals = {
+  wantsProducts: boolean;
+  category?: string;
+  productTypes: string[];
+  vibes: string[];
+};
+
+const CATEGORY_SYNONYMS: Record<string, string> = {
+  footwear: "Footwear",
+  footware: "Footwear",
+  foorwear: "Footwear",
+  fotwear: "Footwear",
+  fowear: "Footwear",
+  shoe: "Footwear",
+  shoes: "Footwear",
+  shoez: "Footwear",
+  sneaker: "Footwear",
+  sneakers: "Footwear",
+  boot: "Footwear",
+  boots: "Footwear",
+  loafer: "Footwear",
+  loafers: "Footwear",
+  sandal: "Footwear",
+  sandals: "Footwear",
+  clothing: "Clothing",
+  clothes: "Clothing",
+  cloths: "Clothing",
+  clohtes: "Clothing",
+  apparel: "Clothing",
+  outfit: "Clothing",
+  outfits: "Clothing",
+  wear: "Clothing",
+  accessory: "Accessories",
+  accessories: "Accessories",
+  accessorie: "Accessories",
+  accecories: "Accessories",
+  accesorries: "Accessories",
+  bag: "Accessories",
+  bags: "Accessories",
+  tie: "Accessories",
+  ties: "Accessories",
+  belt: "Accessories",
+  belts: "Accessories",
+  watch: "Accessories",
+  watches: "Accessories",
+  sunglasses: "Accessories",
+  sunglass: "Accessories",
+  shades: "Accessories",
+  shade: "Accessories",
+};
+
+const VIBE_KEYWORDS: Record<string, string> = {
+  formal: "formal",
+  classy: "formal",
+  elegant: "formal",
+  premium: "luxury",
+  luxury: "luxury",
+  casual: "casual",
+  everyday: "casual",
+  smart: "smart-casual",
+  smartcasual: "smart-casual",
+  minimal: "minimal",
+  minimalist: "minimal",
+  summer: "summer",
+  wedding: "occasion",
+};
+
+function inferProductTypes(product: Product): string[] {
+  const haystack = normalizeText(`${product.name} ${product.description}`);
+  const pairs: Array<[string, RegExp]> = [
+    ["boots", /\bboot(s)?\b/],
+    ["loafers", /\bloafer(s)?\b/],
+    ["espadrilles", /\bespadrille(s)?\b/],
+    ["sunglasses", /\bsunglass(es)?\b/],
+    ["shirts", /\bshirt(s)?\b/],
+    ["dress", /\bdress(es)?\b/],
+    ["blazer", /\bblazer(s)?\b/],
+    ["chinos", /\bchino(s)?\b/],
+    ["tie", /\btie(s)?\b/],
+    ["belt", /\bbelt(s)?\b/],
+    ["watch", /\bwatch(es)?\b/],
+    ["hat", /\bhat(s)?\b|fedora(s)?\b/],
+    ["bag", /\bbag(s)?\b|tote(s)?\b|duffel\b/],
+  ];
+  const matches = pairs.filter(([, regex]) => regex.test(haystack)).map(([type]) => type);
+  if (matches.length > 0) return matches;
+  if (product.category === "Footwear") return ["shoes"];
+  if (product.category === "Clothing") return ["clothing"];
+  if (product.category === "Accessories") return ["accessories"];
+  return [];
+}
+
+function inferProductVibes(product: Product): string[] {
+  const haystack = normalizeText(`${product.name} ${product.description}`);
+  const vibes = new Set<string>();
+  if (/\b(silk|italian|handmade|luxury|premium|cashmere|suede|full grain|leather)\b/.test(haystack)) vibes.add("luxury");
+  if (/\b(formal|elegant|classic|suit|wedding|oxford|blazer|tie)\b/.test(haystack)) vibes.add("formal");
+  if (/\b(casual|everyday|relaxed|weekend|denim|canvas)\b/.test(haystack)) vibes.add("casual");
+  if (/\b(minimal|clean|minimalist)\b/.test(haystack)) vibes.add("minimal");
+  if (/\b(summer|linen|lightweight|breathable)\b/.test(haystack)) vibes.add("summer");
+  if (/\b(smart casual|smart-casual|versatile)\b/.test(haystack)) vibes.add("smart-casual");
+  if (vibes.size === 0) {
+    if (product.category === "Footwear") vibes.add("smart-casual");
+    if (product.category === "Clothing") vibes.add("casual");
+    if (product.category === "Accessories") vibes.add("minimal");
+  }
+  return Array.from(vibes);
+}
+
+function detectIntentSignals(message: string, catalog: Product[]): IntentSignals {
+  const normalizedMessage = normalizeText(message);
+  const tokens = tokenizeSearchQuery(normalizedMessage);
+  const categories = new Set(catalog.map((product) => product.category));
+  let category: string | undefined;
+  const productTypes = new Set<string>();
+  const vibes = new Set<string>();
+
+  for (const token of tokens) {
+    const c = CATEGORY_SYNONYMS[token];
+    if (c && categories.has(c)) category = c;
+    const vibe = VIBE_KEYWORDS[token];
+    if (vibe) vibes.add(vibe);
+  }
+
+  const typeAliases: Record<string, string[]> = {
+    boots: ["boots", "boot"],
+    loafers: ["loafers", "loafer"],
+    shoes: ["shoes", "shoe", "shoez", "footwear", "footware", "fowear", "sneakers", "sneaker", "espadrilles", "espadrille"],
+    ties: ["ties", "tie"],
+    shirts: ["shirts", "shirt", "oxford shirt"],
+    dress: ["dress", "dresses"],
+    blazer: ["blazer", "blazers"],
+    chinos: ["chinos", "chino"],
+    sunglasses: ["sunglasses", "sunglass", "sun glasses", "shade", "shades", "aviator"],
+    watch: ["watch", "watches"],
+    bag: ["bag", "bags", "tote", "duffel"],
+  };
+  for (const [type, aliases] of Object.entries(typeAliases)) {
+    if (aliases.some((alias) => normalizedMessage.includes(alias))) {
+      productTypes.add(type);
+    }
+  }
+
+  const wantsProducts = /(need|want|show|find|looking|search|recommend|suggest|shop|browse|see)/i.test(normalizedMessage) ||
+    Boolean(category) ||
+    productTypes.size > 0 ||
+    vibes.size > 0;
+
+  return {
+    wantsProducts,
+    category,
+    productTypes: Array.from(productTypes),
+    vibes: Array.from(vibes),
+  };
+}
+
+function filterProductsByIntent(catalog: Product[], intent: IntentSignals, limit = 4): Product[] {
+  let filtered = [...catalog];
+  if (intent.category) {
+    filtered = filtered.filter((product) => product.category === intent.category);
+  }
+  if (intent.productTypes.length > 0) {
+    const next = filtered.filter((product) => {
+      const productTypes = inferProductTypes(product);
+      return intent.productTypes.some((type) => productTypes.includes(type));
+    });
+    if (next.length > 0) filtered = next;
+  }
+  if (intent.vibes.length > 0) {
+    const next = filtered.filter((product) => {
+      const productVibes = inferProductVibes(product);
+      return intent.vibes.some((vibe) => productVibes.includes(vibe));
+    });
+    if (next.length > 0) filtered = next;
+  }
+
+  return filtered
+    .sort((a, b) => Number(b.rating) - Number(a.rating))
+    .slice(0, limit);
+}
+
+function buildCatalogQueryFromIntent(rawMessage: string, intent: IntentSignals): string {
+  const genericTypes = new Set(["shoes", "clothing", "accessories"]);
+  const specificType = intent.productTypes.find((type) => !genericTypes.has(type));
+
+  if (specificType) return specificType;
+  if (intent.category) return "";
+  if (intent.vibes.length > 0) return intent.vibes[0];
+  return rawMessage.trim();
+}
+
+function tokenizeSearchQuery(query: string): string[] {
+  return query
+    .toLowerCase()
+    .split(/[^a-z0-9]+/g)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2);
+}
+
+function productMatchesTokens(product: Product, tokens: string[]): boolean {
+  if (!tokens.length) return true;
+  const haystack = normalizeText(`${product.name} ${product.description} ${product.category}`);
+  return tokens.some((token) => {
+    if (haystack.includes(token)) return true;
+    if (token.endsWith("es") && token.length > 3) {
+      const singular = token.slice(0, -2);
+      if (haystack.includes(singular)) return true;
+    }
+    if (token.endsWith("s") && token.length > 3) {
+      const singular = token.slice(0, -1);
+      if (haystack.includes(singular)) return true;
+    }
+    return false;
+  });
+}
+
+function dominantCategory(products: Product[]): string | undefined {
+  if (!products.length) return undefined;
+  const counts = new Map<string, number>();
+  for (const product of products) {
+    counts.set(product.category, (counts.get(product.category) ?? 0) + 1);
+  }
+  let best: string | undefined;
+  let bestCount = 0;
+  counts.forEach((count, category) => {
+    if (count > bestCount) {
+      best = category;
+      bestCount = count;
+    }
+  });
+  return best;
+}
+
+function normalizeCategoryFromCatalog(category: string | undefined, catalog: Product[]): string | undefined {
+  if (!category) return undefined;
+  const normalized = category.trim().toLowerCase();
+  if (!normalized) return undefined;
+  const match = catalog.find((product) => product.category.toLowerCase() === normalized);
+  return match?.category;
+}
+
+async function aiSelectProducts(
+  catalog: Product[],
+  query: string,
+  options?: { limit?: number; category?: string; productTypes?: string[]; vibes?: string[] },
+): Promise<{ products: Product[]; category?: string; usedCategoryFallback: boolean }> {
+  const limit = options?.limit ?? 4;
+  const trimmedQuery = query.trim();
+  if (!trimmedQuery) {
+    return { products: [], usedCategoryFallback: false };
+  }
+
+  const catalogCategories = Array.from(new Set(catalog.map((product) => product.category)));
+  const compactCatalog = catalog.map((product) => ({
+    id: product.id,
+    name: product.name,
+    description: product.description,
+    category: product.category,
+    productTypes: inferProductTypes(product),
+    vibes: inferProductVibes(product),
+    price: Number(product.price),
+    rating: Number(product.rating),
+  }));
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are a product matcher. Choose up to the requested limit of product IDs that best match the shopper query. " +
+          "If the query strongly implies a category, return the closest category from the catalog list. " +
+          "Respond with JSON only.",
+      },
+      {
+        role: "user",
+        content: JSON.stringify({
+          query: trimmedQuery,
+          limit,
+          categoryHint: options?.category ?? null,
+          productTypeHint: options?.productTypes ?? [],
+          vibeHint: options?.vibes ?? [],
+          categories: catalogCategories,
+          catalog: compactCatalog,
+        }),
+      },
+    ],
+    response_format: { type: "json_object" },
+    temperature: 0.2,
+  });
+
+  let parsed: any = {};
+  try {
+    parsed = JSON.parse(completion.choices[0].message.content || "{}");
+  } catch {
+    parsed = {};
+  }
+
+  const ids: unknown[] = Array.isArray(parsed.productIds) ? parsed.productIds : [];
+  const normalizedIds: number[] = ids
+    .map((id: unknown) => Number(id))
+    .filter((id: number) => Number.isFinite(id));
+
+  const catalogMap = new Map(catalog.map((product) => [product.id, product]));
+  let products = normalizedIds
+    .map((id) => catalogMap.get(id))
+    .filter((product): product is Product => Boolean(product));
+
+  const modelCategory = normalizeCategoryFromCatalog(
+    typeof parsed.category === "string" ? parsed.category : undefined,
+    catalog,
+  );
+  const explicitCategory = normalizeCategoryFromCatalog(options?.category, catalog);
+  const category = explicitCategory ?? modelCategory;
+
+  if (category) {
+    products = products.filter((product) => product.category === category);
+  }
+
+  if (options?.productTypes && options.productTypes.length > 0) {
+    const constrained = products.filter((product) => {
+      const types = inferProductTypes(product);
+      return options.productTypes?.some((type) => types.includes(type));
+    });
+    if (constrained.length > 0) products = constrained;
+  }
+
+  if (options?.vibes && options.vibes.length > 0) {
+    const constrained = products.filter((product) => {
+      const vibes = inferProductVibes(product);
+      return options.vibes?.some((vibe) => vibes.includes(vibe));
+    });
+    if (constrained.length > 0) products = constrained;
+  }
+
+  let usedCategoryFallback = false;
+  if (products.length === 0 && category) {
+    products = catalog
+      .filter((product) => product.category === category)
+      .sort((a, b) => Number(b.rating) - Number(a.rating))
+      .slice(0, limit);
+    usedCategoryFallback = products.length > 0;
+  }
+
+  return { products, category, usedCategoryFallback };
 }
 
 function pickProductByIdOrName(products: Product[], args: { productId?: number; productName?: string }): Product | null {
@@ -251,6 +594,16 @@ function extractRequestedQuantity(message: string): number {
   return Math.max(1, Math.min(10, qty));
 }
 
+function isAffirmativeResponse(message: string): boolean {
+  const normalized = normalizeText(message);
+  return /\b(yes|yeah|yep|yup|sure|ok|okay|proceed|go ahead|lets go|let s go|checkout)\b/i.test(normalized);
+}
+
+function isNegativeResponse(message: string): boolean {
+  const normalized = normalizeText(message);
+  return /\b(no|nah|nope|later|not now|wait|stop|cancel)\b/i.test(normalized);
+}
+
 function profileActivitySummary(profile: ShopperProfile): string {
   return JSON.stringify({
     viewedCategories: profile.viewedCategories.slice(-10),
@@ -263,23 +616,24 @@ function profileActivitySummary(profile: ShopperProfile): string {
 
 function buildCouponFromReason(reason: string, cartTotal = 0): { discountAmount: number; code: string } {
   const r = reason.toLowerCase();
-  const rude = /(stupid|idiot|worst|trash|useless|hate|dumb|nonsense)/i.test(r);
+  const rude = /(stupid|idiot|moron|worst|trash|useless|hate|dumb|nonsense|fat|ugly|loser|shut up|fool|jerk)/i.test(r);
+  const friendly = /(please|kindly|thanks|thank you|appreciate|could you|would you|can you help|pls)/i.test(r);
   let discountAmount = 5;
   let prefix = "SAVE";
   const maxDiscountFromBottomPrice = cartTotal >= 300 ? 20 : cartTotal >= 150 ? 15 : 10;
 
   if (rude) {
-    discountAmount = -10;
-    prefix = "RUDE";
+    discountAmount = 0;
+    prefix = "NODEAL";
   } else if (/(birthday|bday|anniversary)/i.test(r)) {
     discountAmount = 20;
     prefix = "BDAY";
-  } else if (/(buying two|two items|bulk|bundle|multiple)/i.test(r)) {
-    discountAmount = 15;
-    prefix = "BULK";
-  } else if (/(student|first order|new customer)/i.test(r)) {
-    discountAmount = 10;
-    prefix = "WELCOME";
+  } else if (friendly) {
+    discountAmount = 7;
+    prefix = "KIND";
+  } else {
+    discountAmount = 5;
+    prefix = "SAVE";
   }
   if (discountAmount > 0) {
     discountAmount = Math.min(discountAmount, maxDiscountFromBottomPrice);
@@ -309,18 +663,20 @@ export async function registerRoutes(
   app.get(api.products.list.path, async (req, res) => {
     let products = await storage.getProducts();
     const { category, sort, search } = req.query;
+    const categorySet = new Set(products.map((product) => product.category.toLowerCase()));
 
     if (category && category !== "all") {
       const requestedCategory = String(category).toLowerCase();
-      products = products.filter((p) => p.category.toLowerCase() === requestedCategory);
+      if (categorySet.has(requestedCategory)) {
+        products = products.filter((p) => p.category.toLowerCase() === requestedCategory);
+      }
     }
 
     if (search) {
-      const query = String(search).toLowerCase();
-      products = products.filter(p =>
-        p.name.toLowerCase().includes(query) ||
-        p.description.toLowerCase().includes(query)
-      );
+      const tokens = tokenizeSearchQuery(String(search));
+      if (tokens.length > 0) {
+        products = products.filter((product) => productMatchesTokens(product, tokens));
+      }
     }
 
     if (sort === "price_asc") {
@@ -395,11 +751,47 @@ export async function registerRoutes(
       }
 
       const normalizedMessage = message.toLowerCase();
+      const intentSignals = detectIntentSignals(message, productCatalog);
+      if (profile.awaitingCheckoutConfirmation) {
+        if (isAffirmativeResponse(message)) {
+          profile.awaitingCheckoutConfirmation = false;
+          const assistantText = "Perfect. Taking you to checkout now.";
+          return res.json({
+            message: assistantText,
+            content: assistantText,
+            action: { type: "navigate_checkout" },
+            actions: [{ type: "navigate_checkout" }],
+            products: [],
+            tool_calls: [],
+            data: { productsCount: 0, personalized: true },
+            role: "assistant",
+          });
+        }
+        if (isNegativeResponse(message)) {
+          profile.awaitingCheckoutConfirmation = false;
+          const assistantText = "No problem. Your cart is ready whenever you want to check out.";
+          return res.json({
+            message: assistantText,
+            content: assistantText,
+            action: null,
+            actions: [],
+            products: [],
+            tool_calls: [],
+            data: { productsCount: 0, personalized: true },
+            role: "assistant",
+          });
+        }
+      }
       const wantsAddToCart =
         /(add\s+(this|that|it))/i.test(message) ||
         /(add.*\bcart\b)/i.test(message) ||
         /(buy\s+(this|that|it))/i.test(message) ||
         /(checkout\s+(this|that|it))/i.test(message);
+      const wantsDiscount = /(discount|coupon|deal|price\s*off|price cut|negotiat)/i.test(message);
+      const referencesCurrentItem = /(this|that|it|same one|that one|last one|the one)/i.test(message);
+      const explicitBrowseIntent = /(show|find|looking for|search|recommend|suggest|browse|i need|i want some)/i.test(
+        normalizedMessage,
+      );
 
       const directProduct = findDirectProductMention(message, productCatalog);
       const lastMentionedProduct =
@@ -419,13 +811,47 @@ export async function registerRoutes(
         profile.lastMentionedProductId = resolvedProduct.id;
         profile.lastShownProductIds = [resolvedProduct.id];
         profile.addedProductIds.push(resolvedProduct.id);
+        profile.awaitingCheckoutConfirmation = true;
 
-        const assistantText = `Bet, I added ${requestedQuantity} x ${resolvedProduct.name} to your cart.`;
+        const assistantText = `Bet, I added ${requestedQuantity} x ${resolvedProduct.name} to your cart. Want to proceed to checkout?`;
         return res.json({
           message: assistantText,
           content: assistantText,
           action: { type: "add_to_cart", productId: resolvedProduct.id, quantity: requestedQuantity },
           actions: [{ type: "add_to_cart", productId: resolvedProduct.id, quantity: requestedQuantity }],
+          products: [toProductCard(resolvedProduct)],
+          tool_calls: [],
+          data: {
+            productsCount: 1,
+            personalized: true,
+          },
+          role: "assistant",
+        });
+      }
+
+      // Deterministic follow-up behavior: keep focus on the current item for discount negotiation.
+      if (
+        wantsDiscount &&
+        resolvedProduct &&
+        !directProduct &&
+        (referencesCurrentItem || !explicitBrowseIntent)
+      ) {
+        const coupon = buildCouponFromReason(message, Number(context?.cartTotal ?? 0));
+        profile.lastMentionedProductId = resolvedProduct.id;
+        profile.lastShownProductIds = [resolvedProduct.id];
+
+        const assistantText =
+          coupon.discountAmount > 0
+            ? `For ${resolvedProduct.name}, your coupon ${coupon.code} is live for ${coupon.discountAmount}% off.`
+            : `I can’t apply a discount on ${resolvedProduct.name} with that tone right now.`;
+
+        return res.json({
+          message: assistantText,
+          content: assistantText,
+          action: { type: "apply_coupon", code: coupon.code, discountAmount: coupon.discountAmount, reason: message },
+          actions: [
+            { type: "apply_coupon", code: coupon.code, discountAmount: coupon.discountAmount, reason: message },
+          ],
           products: [toProductCard(resolvedProduct)],
           tool_calls: [],
           data: {
@@ -480,7 +906,8 @@ export async function registerRoutes(
 
         if (/(add to cart|buy|checkout|purchase)/i.test(message)) {
           actions.push({ type: "add_to_cart", productId: directProduct.id, quantity: 1 });
-          assistantText += " I can add it to your cart rn.";
+          profile.awaitingCheckoutConfirmation = true;
+          assistantText = `Bet, I added ${directProduct.name} to your cart. Want to proceed to checkout?`;
         }
 
         return res.json({
@@ -498,6 +925,40 @@ export async function registerRoutes(
         });
       }
 
+      // Deterministic intent path for category/type/vibe requests.
+      if (
+        intentSignals.wantsProducts &&
+        (intentSignals.category || intentSignals.productTypes.length > 0 || intentSignals.vibes.length > 0)
+      ) {
+        const resolved = filterProductsByIntent(productCatalog, intentSignals, 4);
+        if (resolved.length > 0) {
+          const cards = resolved.map(toProductCard);
+          const actionCategory = intentSignals.category ?? dominantCategory(resolved);
+          const actionQuery = buildCatalogQueryFromIntent(message, intentSignals);
+
+          profile.lastShownProductIds = resolved.map((p) => p.id);
+          profile.lastMentionedProductId = resolved[0]?.id ?? profile.lastMentionedProductId;
+          for (const product of resolved) {
+            profile.viewedCategories.push(product.category);
+          }
+
+          const assistantText = buildCardLeadMessage(cards);
+          return res.json({
+            message: assistantText,
+            content: assistantText,
+            action: { type: "search_products", query: actionQuery, category: actionCategory },
+            actions: [{ type: "search_products", query: actionQuery, category: actionCategory }],
+            products: cards,
+            tool_calls: [],
+            data: {
+              productsCount: cards.length,
+              personalized: true,
+            },
+            role: "assistant",
+          });
+        }
+      }
+
       const systemPrompt = `
 You are "The Clerk", a stylish Gen Z personal shopper.
 Rules:
@@ -512,6 +973,7 @@ Rules:
 - If user asks discount or negotiates, call apply_coupon.
 - Prefer actionable responses over generic descriptions.
 - When products are available, mention they are shown as cards with links.
+- When calling search_products, include a category from the inventory when it is clear.
 
 Customer context:
 ${profileActivitySummary(profile)}
@@ -632,13 +1094,50 @@ ${profileActivitySummary(profile)}
           let toolResult: Record<string, any> = { ok: true };
 
           if (call.function.name === "search_products") {
-            const results = semanticSearchProducts(productCatalog, String(parsedArgs.query ?? ""), {
-              category: parsedArgs.category,
-              maxPrice: typeof parsedArgs.maxPrice === "number" ? parsedArgs.maxPrice : undefined,
-              minRating: typeof parsedArgs.minRating === "number" ? parsedArgs.minRating : undefined,
-              limit: typeof parsedArgs.limit === "number" ? parsedArgs.limit : 4,
-              profile,
-            });
+            const rawQuery = String(parsedArgs.query ?? "");
+            const limit = typeof parsedArgs.limit === "number" ? parsedArgs.limit : 4;
+            const toolIntent = detectIntentSignals(rawQuery, productCatalog);
+            const requestedCategory =
+              normalizeCategoryFromCatalog(
+                typeof parsedArgs.category === "string" ? parsedArgs.category : undefined,
+                productCatalog,
+              ) ?? toolIntent.category;
+            let results: Product[] = [];
+            let inferredCategory: string | undefined;
+            let usedCategoryFallback = false;
+
+            try {
+              const aiResult = await aiSelectProducts(productCatalog, rawQuery, {
+                limit,
+                category: requestedCategory,
+                productTypes: toolIntent.productTypes,
+                vibes: toolIntent.vibes,
+              });
+              results = aiResult.products;
+              inferredCategory = aiResult.category;
+              usedCategoryFallback = aiResult.usedCategoryFallback;
+            } catch {
+              results = [];
+            }
+
+            if (results.length === 0) {
+              results = semanticSearchProducts(productCatalog, rawQuery, {
+                category: requestedCategory,
+                maxPrice: typeof parsedArgs.maxPrice === "number" ? parsedArgs.maxPrice : undefined,
+                minRating: typeof parsedArgs.minRating === "number" ? parsedArgs.minRating : undefined,
+                limit,
+                profile,
+              });
+              const filtered = filterProductsByIntent(productCatalog, {
+                wantsProducts: true,
+                category: requestedCategory,
+                productTypes: toolIntent.productTypes,
+                vibes: toolIntent.vibes,
+              }, limit);
+              if (filtered.length > 0) {
+                results = filtered;
+              }
+            }
 
             for (const p of results) {
               profile.viewedCategories.push(p.category);
@@ -648,13 +1147,27 @@ ${profileActivitySummary(profile)}
 
             const cards = results.map(toProductCard);
             uiProducts.push(...cards);
+            const actionCategory =
+              normalizeCategoryFromCatalog(requestedCategory, productCatalog) ??
+              normalizeCategoryFromCatalog(inferredCategory, productCatalog) ??
+              dominantCategory(results) ??
+              normalizeCategoryFromCatalog(
+                typeof parsedArgs.category === "string" ? parsedArgs.category : undefined,
+                productCatalog,
+              );
+            const actionQuery =
+              actionCategory
+                ? buildCatalogQueryFromIntent(rawQuery, toolIntent)
+                : usedCategoryFallback
+                  ? ""
+                  : rawQuery;
             actions.push({
               type: "search_products",
-              query: String(parsedArgs.query ?? ""),
-              category: parsedArgs.category ? String(parsedArgs.category) : undefined,
+              query: actionQuery,
+              category: actionCategory,
             });
 
-            toolResult = { products: cards, total: cards.length };
+            toolResult = { products: cards, total: cards.length, category: actionCategory };
           } else if (call.function.name === "check_inventory") {
             let found = pickProductByIdOrName(productCatalog, {
               productId: typeof parsedArgs.productId === "number" ? parsedArgs.productId : undefined,
@@ -705,8 +1218,9 @@ ${profileActivitySummary(profile)}
             } else {
               profile.addedProductIds.push(productId);
               profile.lastMentionedProductId = found.id;
+              profile.awaitingCheckoutConfirmation = true;
               actions.push({ type: "add_to_cart", productId, quantity });
-              forcedAssistantText = `Bet. I added ${quantity} x ${found.name} to your cart.`;
+              forcedAssistantText = `Bet. I added ${quantity} x ${found.name} to your cart. Want to proceed to checkout?`;
               toolResult = {
                 ok: true,
                 added: { productId, quantity, name: found.name },
@@ -748,9 +1262,9 @@ ${profileActivitySummary(profile)}
               reason: reason || message,
             });
             forcedAssistantText =
-              coupon.discountAmount >= 0
+              coupon.discountAmount > 0
                 ? `Nice, your coupon ${coupon.code} is live for ${coupon.discountAmount}% off.`
-                : `I can’t give a discount with that tone. ${coupon.code} bumps price by +${Math.abs(coupon.discountAmount)}%.`;
+                : "I can’t apply a discount with that tone right now.";
             toolResult = {
               ok: true,
               code: coupon.code,
@@ -768,7 +1282,41 @@ ${profileActivitySummary(profile)}
 
       // Safety net for intent execution if model responds without tool calls.
       if (actions.length === 0) {
-        if (/(cheaper|cheap|budget|low price)/i.test(normalizedMessage)) {
+        const fallbackQuery = message.trim();
+        if (fallbackQuery) {
+          try {
+            const fallbackIntent = detectIntentSignals(fallbackQuery, productCatalog);
+            const aiFallback = await aiSelectProducts(productCatalog, fallbackQuery, {
+              limit: 4,
+              category: fallbackIntent.category,
+              productTypes: fallbackIntent.productTypes,
+              vibes: fallbackIntent.vibes,
+            });
+            if (aiFallback.products.length > 0) {
+              const cards = aiFallback.products.map(toProductCard);
+              uiProducts.push(...cards);
+              const actionCategory =
+                normalizeCategoryFromCatalog(fallbackIntent.category, productCatalog) ??
+                normalizeCategoryFromCatalog(aiFallback.category, productCatalog) ??
+                dominantCategory(aiFallback.products);
+              const actionQuery = actionCategory
+                ? buildCatalogQueryFromIntent(fallbackQuery, fallbackIntent)
+                : aiFallback.usedCategoryFallback
+                  ? ""
+                  : fallbackQuery;
+              actions.push({
+                type: "search_products",
+                query: actionQuery,
+                category: actionCategory,
+              });
+              forcedAssistantText = buildCardLeadMessage(cards);
+            }
+          } catch {
+            // Ignore AI fallback failures.
+          }
+        }
+
+        if (actions.length === 0 && /(cheaper|cheap|budget|low price)/i.test(normalizedMessage)) {
           actions.push({ type: "sort_products", sortBy: "price_asc" });
           const cheapest = [...productCatalog]
             .sort((a, b) => Number(a.price) - Number(b.price))
@@ -776,7 +1324,7 @@ ${profileActivitySummary(profile)}
             .map(toProductCard);
           uiProducts.push(...cheapest);
           forcedAssistantText = "Say less. I sorted low-to-high and pulled budget-friendly picks below.";
-        } else if (/(discount|coupon|deal|birthday|bday|buying two)/i.test(normalizedMessage)) {
+        } else if (actions.length === 0 && /(discount|coupon|deal|birthday|bday|buying two)/i.test(normalizedMessage)) {
           const coupon = buildCouponFromReason(message, Number(context?.cartTotal ?? 0));
           actions.push({
             type: "apply_coupon",
@@ -785,14 +1333,19 @@ ${profileActivitySummary(profile)}
             reason: message,
           });
           forcedAssistantText =
-            coupon.discountAmount >= 0
+            coupon.discountAmount > 0
               ? `Nice, your coupon ${coupon.code} is live for ${coupon.discountAmount}% off.`
-              : `I can’t give a discount with that tone. ${coupon.code} bumps price by +${Math.abs(coupon.discountAmount)}%.`;
-        } else if (/(buy|add to cart|checkout|purchase)/i.test(normalizedMessage) && profile.lastMentionedProductId) {
+              : "I can’t apply a discount with that tone right now.";
+        } else if (
+          actions.length === 0 &&
+          /(buy|add to cart|checkout|purchase)/i.test(normalizedMessage) &&
+          profile.lastMentionedProductId
+        ) {
+          profile.awaitingCheckoutConfirmation = true;
           actions.push({ type: "add_to_cart", productId: profile.lastMentionedProductId, quantity: 1 });
           const product = productCatalog.find((p) => p.id === profile.lastMentionedProductId);
           if (product) {
-            forcedAssistantText = `Done, I added ${product.name} to your cart.`;
+            forcedAssistantText = `Done, I added ${product.name} to your cart. Want to proceed to checkout?`;
           }
         }
       }
@@ -807,6 +1360,41 @@ ${profileActivitySummary(profile)}
         profile.lastShownProductIds = personalized.map((p) => p.id);
         profile.lastMentionedProductId = personalized[0]?.id ?? profile.lastMentionedProductId;
         uiProducts.push(...personalized.map(toProductCard));
+      }
+
+      // Final guard: ensure product cards are consistent with explicit intent.
+      if (
+        intentSignals.wantsProducts &&
+        (intentSignals.category || intentSignals.productTypes.length > 0 || intentSignals.vibes.length > 0)
+      ) {
+        const intentResolved = filterProductsByIntent(productCatalog, intentSignals, 4);
+        if (intentResolved.length > 0) {
+          const allowedIds = new Set(intentResolved.map((p) => p.id));
+          const currentlyAligned = uiProducts.filter((card) => allowedIds.has(card.id));
+          if (currentlyAligned.length === 0) {
+            uiProducts.length = 0;
+            uiProducts.push(...intentResolved.map(toProductCard));
+
+            const actionCategory = intentSignals.category ?? dominantCategory(intentResolved);
+            const actionQuery = buildCatalogQueryFromIntent(message, intentSignals);
+            const searchAction: ClerkAction = {
+              type: "search_products",
+              query: actionQuery,
+              category: actionCategory,
+            };
+
+            const searchActionIndex = actions.findIndex((action) => action.type === "search_products");
+            if (searchActionIndex >= 0) {
+              actions[searchActionIndex] = searchAction;
+            } else {
+              actions.push(searchAction);
+            }
+
+            profile.lastShownProductIds = intentResolved.map((p) => p.id);
+            profile.lastMentionedProductId = intentResolved[0]?.id ?? profile.lastMentionedProductId;
+            forcedAssistantText = buildCardLeadMessage(uiProducts);
+          }
+        }
       }
 
       let assistantText = "I pulled a few solid options for you.";
