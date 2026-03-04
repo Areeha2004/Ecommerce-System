@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Send, Sparkles, ShoppingBag, Star } from "lucide-react";
+import { MessageCircle, X, Send, Sparkles, ShoppingBag, Star, Bot, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -105,13 +105,19 @@ interface Message {
   products?: ChatProductCard[];
 }
 
+const quickPrompts = [
+  "Find premium picks under $120",
+  "Show top rated accessories",
+  "Build a full outfit for me",
+];
+
 export function AIChat() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
       role: "assistant",
-      content: "Yo, I’m The Clerk. Tell me your vibe and I’ll find the best picks and add them to cart for you.",
+      content: "I am The Clerk. Tell me your vibe and I will find the best picks and add them to cart for you.",
     },
   ]);
   const [inputValue, setInputValue] = useState("");
@@ -189,7 +195,7 @@ export function AIChat() {
           toast({
             title: "Added to cart",
             description: `${product.name} x${quantity}`,
-            className: "border-primary/30 shadow-2xl",
+            className: "border-[#be8451]/40 shadow-2xl",
           });
         }
       } else if (action.type === "navigate_checkout") {
@@ -263,11 +269,10 @@ export function AIChat() {
     },
   });
 
-  const handleSend = (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!inputValue.trim() || chatMutation.isPending) return;
+  const sendMessage = (text: string) => {
+    const outgoing = text.trim();
+    if (!outgoing || chatMutation.isPending) return;
 
-    const outgoing = inputValue.trim();
     setMessages((prev) => [
       ...prev,
       {
@@ -280,52 +285,81 @@ export function AIChat() {
     chatMutation.mutate(outgoing);
   };
 
+  const handleSend = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    sendMessage(inputValue);
+  };
+
   const toggleClerk = () => setIsOpen((prev) => !prev);
 
   return (
     <>
       <motion.button
         onClick={toggleClerk}
-        className={`fixed bottom-6 right-6 z-50 p-4 rounded-full shadow-2xl transition-colors ${
-          isOpen ? "bg-secondary text-white" : "bg-primary text-white hover:bg-primary/90"
+        className={`fixed bottom-6 right-6 z-50 rounded-full border p-4 shadow-[0_22px_45px_-25px_rgba(8,11,20,0.9)] transition-all ${
+          isOpen
+            ? "border-[#c7cedb] bg-white text-[#121826]"
+            : "border-[#be8451]/25 bg-[#121826] text-white hover:bg-[#1d2940]"
         }`}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        whileHover={{ scale: 1.04 }}
+        whileTap={{ scale: 0.96 }}
         data-testid="button-toggle-chat"
       >
-        {isOpen ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
+        {isOpen ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
       </motion.button>
 
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            initial={{ opacity: 0, y: 18, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-24 right-6 z-[60] w-[420px] max-w-[calc(100vw-48px)] h-[650px] max-h-[calc(100vh-140px)] glass rounded-[2.5rem] shadow-2xl border-white/20 flex flex-col overflow-hidden"
+            exit={{ opacity: 0, y: 18, scale: 0.96 }}
+            className="fixed bottom-24 right-6 z-[60] flex h-[670px] max-h-[calc(100vh-140px)] w-[430px] max-w-[calc(100vw-32px)] flex-col overflow-hidden rounded-[2rem] border border-[#d5dce9] bg-[linear-gradient(180deg,#fbfcff_0%,#f5f7fb_100%)] shadow-[0_35px_95px_-40px_rgba(12,18,29,0.95)]"
           >
-            <div className="p-6 border-b border-border/10 bg-black/5 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-primary to-accent flex items-center justify-center text-white shadow-xl rotate-3">
-                  <Sparkles className="w-6 h-6" />
+            <div className="border-b border-[#dce2ee] bg-white/75 px-5 py-4 backdrop-blur-xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#121826] text-white shadow-lg">
+                    <Bot className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-display text-xl font-bold text-[#131a2a]">The Clerk</h3>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8d5d2f]">
+                      Premium Assistant
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-display font-bold text-xl">The Clerk</h3>
-                  <p className="text-[10px] font-bold tracking-widest uppercase text-primary">Action Assistant</p>
-                </div>
+                <button
+                  onClick={toggleClerk}
+                  className="rounded-full p-2 text-[#58657c] transition-colors hover:bg-[#eef2f8] hover:text-[#151d2d]"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
-              <button onClick={toggleClerk} className="p-2 hover:bg-black/5 rounded-full">
-                <X className="w-5 h-5" />
-              </button>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {quickPrompts.map((prompt) => (
+                  <button
+                    key={prompt}
+                    onClick={() => sendMessage(prompt)}
+                    className="rounded-full border border-[#d9dfec] bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#5d6982] transition-colors hover:border-[#cba173] hover:text-[#8d5d2f]"
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
               {messages.map((msg) => (
-                <div key={msg.id} className="space-y-4">
+                <div key={msg.id} className="space-y-3">
                   <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                     <div
-                      className={`max-w-[85%] p-4 rounded-[1.5rem] text-sm ${
-                        msg.role === "user" ? "bg-primary text-white" : "bg-white/80 dark:bg-muted/50 border shadow-sm"
+                      className={`max-w-[86%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                        msg.role === "user"
+                          ? "bg-[#121826] text-white"
+                          : msg.role === "system"
+                            ? "border border-[#f3c5c5] bg-[#fff2f2] text-[#8f2f2f]"
+                            : "border border-[#dde3ef] bg-white text-[#1f2940]"
                       }`}
                     >
                       {msg.content}
@@ -333,65 +367,64 @@ export function AIChat() {
                   </div>
 
                   {msg.role === "assistant" && Array.isArray(msg.products) && msg.products.length > 0 && (
-                    <div className="grid grid-cols-1 gap-3 animate-in fade-in slide-in-from-bottom-2">
+                    <div className="grid grid-cols-1 gap-2.5">
                       {msg.products.map((product) => (
                         <div
                           key={product.id}
-                          className="bg-white/90 dark:bg-muted/80 border rounded-2xl p-3 flex gap-4 shadow-sm hover:shadow-md transition-shadow"
+                          className="flex gap-3 rounded-2xl border border-[#dce2ee] bg-white p-3 shadow-[0_18px_45px_-40px_rgba(12,18,29,0.9)] transition-all hover:border-[#d0d9e8]"
                         >
                           <button
-                            className="block"
+                            className="block overflow-hidden rounded-xl"
                             onClick={() => navigateToProduct(product)}
                             aria-label={`Open ${product.name}`}
                           >
-                            <img src={product.image} className="w-20 h-20 object-cover rounded-xl" alt={product.name} />
+                            <img src={product.image} className="h-20 w-20 object-cover" alt={product.name} />
                           </button>
-                          <div className="flex-1 min-w-0">
-                            <button
-                              onClick={() => navigateToProduct(product)}
-                              className="text-left"
-                            >
-                              <h4 className="font-bold text-sm truncate hover:text-primary">{product.name}</h4>
+                          <div className="min-w-0 flex-1">
+                            <button onClick={() => navigateToProduct(product)} className="text-left">
+                              <h4 className="truncate text-sm font-semibold text-[#151d2d] hover:text-[#8d5d2f]">
+                                {product.name}
+                              </h4>
                             </button>
-                            <div className="flex items-center gap-2 text-xs mt-1 text-muted-foreground">
-                              <div className="flex items-center gap-1 text-primary">
-                                <Star className="w-3 h-3 fill-current" /> {product.rating}
+                            <div className="mt-1 flex items-center gap-2 text-xs text-[#6f7b92]">
+                              <div className="flex items-center gap-1 text-[#b17642]">
+                                <Star className="h-3 w-3 fill-current" /> {product.rating}
                               </div>
-                              <span>•</span>
+                              <span>�</span>
                               <span>{product.category}</span>
                             </div>
                             {Array.isArray(product.vibes) && product.vibes.length > 0 && (
-                              <div className="flex gap-1 mt-2">
+                              <div className="mt-2 flex gap-1">
                                 {product.vibes.slice(0, 2).map((vibe) => (
                                   <span
                                     key={`${product.id}-${vibe}`}
-                                    className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary uppercase tracking-wide"
+                                    className="rounded-full bg-[#f7ecdf] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#8d5d2f]"
                                   >
                                     {vibe}
                                   </span>
                                 ))}
                               </div>
                             )}
-                            <div className="text-[11px] mt-1 text-muted-foreground">{product.reviewsCount} reviews</div>
-                            <div className="text-[11px] mt-1 text-muted-foreground">Stock: {product.stock}</div>
-                            <div className="flex items-center justify-between mt-2">
-                              <span className="font-bold text-primary">${Number(product.price).toFixed(2)}</span>
-                              <div className="flex gap-2">
+                            <div className="mt-2 flex items-center justify-between">
+                              <span className="text-sm font-semibold text-[#a66f3e]">
+                                ${Number(product.price).toFixed(2)}
+                              </span>
+                              <div className="flex items-center gap-1.5">
                                 <button
                                   onClick={() => navigateToProduct(product)}
-                                  className="text-[10px] font-bold uppercase tracking-widest hover:text-primary"
+                                  className="inline-flex items-center gap-1 rounded-full border border-[#dce2ee] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#44506a] hover:border-[#cba173] hover:text-[#8d5d2f]"
                                 >
-                                  View
+                                  View <ChevronRight className="h-3 w-3" />
                                 </button>
                                 <button
                                   onClick={() => {
                                     const found = allProducts?.find((p) => p.id === product.id);
                                     if (found) addToCart(found);
                                   }}
-                                  className="text-primary"
+                                  className="rounded-full bg-[#121826] p-2 text-white hover:bg-[#1d2940]"
                                   aria-label={`Add ${product.name} to cart`}
                                 >
-                                  <ShoppingBag className="w-4 h-4" />
+                                  <ShoppingBag className="h-3.5 w-3.5" />
                                 </button>
                               </div>
                             </div>
@@ -405,27 +438,29 @@ export function AIChat() {
 
               {chatMutation.isPending && (
                 <div className="flex justify-start">
-                  <div className="bg-white/50 border px-5 py-3 rounded-2xl animate-pulse">Working on it...</div>
+                  <div className="inline-flex items-center gap-2 rounded-2xl border border-[#dde3ef] bg-white px-4 py-3 text-sm text-[#5f6c84]">
+                    <Sparkles className="h-4 w-4 text-[#b17642]" /> Thinking...
+                  </div>
                 </div>
               )}
               <div ref={messagesEndRef} />
             </div>
 
-            <form onSubmit={handleSend} className="p-6 pt-2">
+            <form onSubmit={handleSend} className="border-t border-[#dce2ee] bg-white/80 p-4 backdrop-blur-xl">
               <div className="relative">
                 <input
                   type="text"
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="Ask for products, deals, or add items..."
-                  className="w-full pl-6 pr-14 py-4 glass border rounded-2xl text-sm outline-none"
+                  placeholder="Ask for products, deals, or add items"
+                  className="w-full rounded-2xl border border-[#d6dce9] bg-white py-3 pl-4 pr-14 text-sm text-[#1b2438] outline-none transition-all placeholder:text-[#97a2b6] focus:border-[#b17642] focus:ring-4 focus:ring-[#b17642]/15"
                 />
                 <button
                   type="submit"
                   disabled={!inputValue.trim() || chatMutation.isPending}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-primary text-white rounded-xl"
+                  className="absolute right-2 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl bg-[#121826] text-white transition-colors hover:bg-[#1d2940] disabled:cursor-not-allowed disabled:bg-[#9aa4b5]"
                 >
-                  <Send className="w-4 h-4" />
+                  <Send className="h-4 w-4" />
                 </button>
               </div>
             </form>

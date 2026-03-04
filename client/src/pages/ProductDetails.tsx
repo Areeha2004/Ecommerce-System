@@ -3,7 +3,7 @@ import { useProduct } from "@/hooks/use-products";
 import { useCart } from "@/hooks/use-cart";
 import { Navigation } from "@/components/Navigation";
 import { CartDrawer } from "@/components/CartDrawer";
-import { Loader2, Star, ShieldCheck, Truck, RotateCcw } from "lucide-react";
+import { Loader2, Star, ShieldCheck, Truck, RotateCcw, Sparkles, BadgeCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 
@@ -43,11 +43,29 @@ function colorToCss(color: string): string {
   return "#9aa0a6";
 }
 
+const assuranceItems = [
+  {
+    title: "Free Express Shipping",
+    icon: Truck,
+    copy: "Delivered in premium packaging within 2-4 business days.",
+  },
+  {
+    title: "Verified Authenticity",
+    icon: ShieldCheck,
+    copy: "Every product is quality checked and verified by our team.",
+  },
+  {
+    title: "Easy 30-Day Returns",
+    icon: RotateCcw,
+    copy: "Simple return and exchange process with concierge support.",
+  },
+];
+
 export default function ProductDetails() {
   const { id } = useParams();
   const { data: product, isLoading, error } = useProduct(Number(id));
   const { addToCart } = useCart();
-  
+
   const [quantity, setQuantity] = useState(1);
   const [selectedColor, setSelectedColor] = useState<string>("");
 
@@ -82,155 +100,169 @@ export default function ProductDetails() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="flex min-h-screen items-center justify-center bg-[#f3f4f6]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#b17642]" />
       </div>
     );
   }
 
   if (error || !product) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
-        <h2 className="text-2xl font-display font-bold">Product not found</h2>
-        <a href="/" className="text-primary hover:underline">Return Home</a>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#f3f4f6] text-center">
+        <h2 className="font-display text-3xl font-bold text-[#161c2c]">Product not found</h2>
+        <a href="/" className="rounded-full bg-[#111827] px-5 py-2.5 text-sm font-semibold text-white">
+          Return Home
+        </a>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen overflow-x-hidden bg-[#f3f4f6] pb-20 text-[#161c2c]">
       <Navigation />
       <CartDrawer />
 
-      <main className="pt-32 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
-          
-          {/* Image Gallery Side */}
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="space-y-4"
-          >
-            <div className="aspect-[4/5] bg-muted rounded-3xl overflow-hidden border border-border">
-              <img 
-                src={product.image} 
-                alt={product.name} 
-                className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
-              />
-            </div>
-            {/* Thumbnails (Mock) */}
-            <div className="grid grid-cols-4 gap-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="aspect-square bg-muted rounded-xl border border-border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary transition-all">
-                  <img src={product.image} alt="Thumbnail" className="w-full h-full object-cover opacity-70 hover:opacity-100 transition-opacity" />
-                </div>
-              ))}
-            </div>
-          </motion.div>
+      <main className="mx-auto max-w-7xl px-4 pt-28 sm:px-6 lg:px-8">
+        <section className="relative overflow-hidden rounded-[2rem] border border-[#d9dee8] bg-white shadow-[0_28px_80px_-44px_rgba(16,23,38,0.85)]">
+          <div className="absolute -left-20 top-0 h-72 w-72 rounded-full bg-[#5b86a0]/20 blur-3xl" />
+          <div className="absolute right-0 top-0 h-80 w-80 rounded-full bg-[#c49363]/20 blur-3xl" />
 
-          {/* Details Side */}
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1 }}
-            className="flex flex-col justify-center"
-          >
-            <div className="mb-2 flex items-center gap-2">
-               <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-bold uppercase tracking-wider">
-                 {product.category}
-               </span>
-               <div className="flex items-center text-yellow-400 gap-1">
-                 <Star className="w-4 h-4 fill-current" />
-                 <span className="text-foreground text-sm font-bold">{product.rating}</span>
-                 <span className="text-muted-foreground text-sm font-normal">(124 reviews)</span>
-               </div>
-            </div>
+          <div className="relative grid grid-cols-1 gap-10 p-5 sm:p-8 lg:grid-cols-2 lg:gap-14 lg:p-10">
+            <motion.div
+              initial={{ opacity: 0, x: -18 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.55 }}
+              className="space-y-4"
+            >
+              <div className="relative aspect-[4/5] overflow-hidden rounded-[1.5rem] bg-[#edf2f8]">
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
+                />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#101728]/45 to-transparent" />
+              </div>
 
-            <h1 className="font-display text-4xl md:text-5xl font-bold text-foreground mb-4 leading-tight">
-              {product.name}
-            </h1>
-
-            <div className="text-3xl font-medium text-primary mb-8">
-              ${Number(product.price).toFixed(2)}
-            </div>
-
-            <p className="text-muted-foreground text-lg leading-relaxed mb-8">
-              {product.description}
-            </p>
-
-            {/* Colors */}
-            <div className="mb-8">
-              <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3 block">
-                Select Color: <span className="text-foreground">{selectedColor}</span>
-              </label>
-              <div className="flex gap-3">
-                {product.colors.map((color) => (
-                  <button
-                    key={color}
-                    onClick={() => setSelectedColor(color)}
-                    title={color}
-                    className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all ${
-                      selectedColor === color ? "border-primary scale-110" : "border-transparent hover:scale-105"
-                    }`}
+              <div className="grid grid-cols-3 gap-3">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="group relative aspect-square overflow-hidden rounded-xl border border-[#d8deea] bg-[#edf2f8]"
                   >
-                    <div 
-                      className="w-8 h-8 rounded-full border border-border shadow-sm"
-                      style={{ background: colorToCss(color) }}
+                    <img
+                      src={product.image}
+                      alt="Product alternate preview"
+                      className="h-full w-full object-cover opacity-80 transition-all duration-300 group-hover:scale-105 group-hover:opacity-100"
                     />
-                  </button>
+                  </div>
                 ))}
               </div>
-            </div>
+            </motion.div>
 
-            {/* Actions */}
-            <div className="flex gap-4 mb-10">
-              <div className="flex items-center border border-border rounded-xl bg-white px-2">
-                <button 
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="p-3 text-muted-foreground hover:text-foreground"
+            <motion.div
+              initial={{ opacity: 0, x: 18 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.55, delay: 0.08 }}
+              className="flex flex-col"
+            >
+              <div className="mb-2 flex flex-wrap items-center gap-2.5">
+                <span className="rounded-full border border-[#e4c6a6] bg-[#f8efe5] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9b6634]">
+                  {product.category}
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full border border-[#d9dee8] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#4f5f79]">
+                  <BadgeCheck className="h-3.5 w-3.5" />
+                  Premium Quality
+                </span>
+              </div>
+
+              <h1 className="font-display text-4xl font-bold leading-tight text-[#121a2a] sm:text-5xl">
+                {product.name}
+              </h1>
+
+              <div className="mt-4 flex items-center gap-4">
+                <p className="text-3xl font-semibold text-[#ab723f]">${Number(product.price).toFixed(2)}</p>
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-[#f3f6fb] px-3 py-1.5 text-sm text-[#44506a]">
+                  <Star className="h-4 w-4 fill-[#c58e5d] text-[#c58e5d]" />
+                  <span className="font-semibold">{product.rating}</span>
+                  <span className="text-[#6f7d96]">(124 reviews)</span>
+                </div>
+              </div>
+
+              <p className="mt-6 max-w-xl text-base leading-relaxed text-[#58657b]">{product.description}</p>
+
+              <div className="mt-8">
+                <label className="mb-3 block text-xs font-semibold uppercase tracking-[0.18em] text-[#7a859c]">
+                  Selected color: <span className="text-[#121a2a]">{selectedColor}</span>
+                </label>
+                <div className="flex flex-wrap gap-2.5">
+                  {product.colors.map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => setSelectedColor(color)}
+                      title={color}
+                      className={`flex h-10 w-10 items-center justify-center rounded-full border transition-all ${
+                        selectedColor === color
+                          ? "scale-105 border-[#ab723f] shadow-[0_10px_25px_-18px_rgba(171,114,63,0.9)]"
+                          : "border-[#d6dce8] hover:scale-105"
+                      }`}
+                    >
+                      <span
+                        className="h-7 w-7 rounded-full border border-[#d5dae6]"
+                        style={{ background: colorToCss(color) }}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <div className="inline-flex items-center justify-between rounded-xl border border-[#d7deea] bg-[#f7f9fd] px-2 sm:min-w-[140px]">
+                  <button
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    className="rounded-lg px-3 py-3 text-[#637089] transition-colors hover:text-[#121a2a]"
+                    aria-label="Decrease quantity"
+                  >
+                    -
+                  </button>
+                  <span className="w-8 text-center text-sm font-semibold text-[#1f2940]">{quantity}</span>
+                  <button
+                    onClick={() => setQuantity(quantity + 1)}
+                    className="rounded-lg px-3 py-3 text-[#637089] transition-colors hover:text-[#121a2a]"
+                    aria-label="Increase quantity"
+                  >
+                    +
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => addToCart(product, quantity, selectedColor)}
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#121a2a] px-6 py-3.5 text-sm font-semibold uppercase tracking-[0.14em] text-white shadow-[0_18px_36px_-26px_rgba(18,26,42,1)] transition-all hover:-translate-y-0.5 hover:bg-[#1d2940]"
                 >
-                  -
-                </button>
-                <span className="w-8 text-center font-bold">{quantity}</span>
-                <button 
-                  onClick={() => setQuantity(quantity + 1)}
-                  className="p-3 text-muted-foreground hover:text-foreground"
-                >
-                  +
+                  <Sparkles className="h-4 w-4" />
+                  Add To Cart  ${(Number(product.price) * quantity).toFixed(2)}
                 </button>
               </div>
 
-              <button
-                onClick={() => addToCart(product, quantity, selectedColor)}
-                className="flex-1 py-4 bg-primary text-primary-foreground rounded-xl font-bold text-lg shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-1 transition-all"
-              >
-                Add to Cart - ${(Number(product.price) * quantity).toFixed(2)}
-              </button>
-            </div>
-
-            {/* Trust Badges */}
-            <div className="grid grid-cols-3 gap-4 py-6 border-t border-border">
-              <div className="text-center">
-                <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center mx-auto mb-2 text-foreground">
-                  <Truck className="w-5 h-5" />
-                </div>
-                <p className="text-xs font-semibold">Free Shipping</p>
+              <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {assuranceItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <div
+                      key={item.title}
+                      className="rounded-2xl border border-[#dde3ed] bg-[#fbfcff] p-4"
+                    >
+                      <Icon className="h-4.5 w-4.5 text-[#8e5c31]" />
+                      <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#2d364d]">
+                        {item.title}
+                      </p>
+                      <p className="mt-2 text-xs leading-relaxed text-[#6a7891]">{item.copy}</p>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="text-center">
-                <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center mx-auto mb-2 text-foreground">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <p className="text-xs font-semibold">2 Year Warranty</p>
-              </div>
-              <div className="text-center">
-                <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center mx-auto mb-2 text-foreground">
-                  <RotateCcw className="w-5 h-5" />
-                </div>
-                <p className="text-xs font-semibold">30 Day Returns</p>
-              </div>
-            </div>
-          </motion.div>
-        </div>
+            </motion.div>
+          </div>
+        </section>
       </main>
     </div>
   );

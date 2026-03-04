@@ -1,16 +1,50 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Navigation } from "@/components/Navigation";
 import { ProductCard } from "@/components/ProductCard";
 import { CartDrawer } from "@/components/CartDrawer";
 import { useProducts } from "@/hooks/use-products";
-import { Loader2, Filter, Search, X } from "lucide-react";
+import { Search, ArrowUpRight, Sparkles, Gem, ShieldCheck, Truck } from "lucide-react";
 import { motion } from "framer-motion";
+
+const highlightItems = [
+  {
+    title: "Editor Curated",
+    text: "Pieces selected weekly by our in-house style board.",
+    icon: Gem,
+  },
+  {
+    title: "Certified Craft",
+    text: "Materials and finish quality verified before listing.",
+    icon: ShieldCheck,
+  },
+  {
+    title: "Priority Delivery",
+    text: "Fast, careful shipping with premium packaging.",
+    icon: Truck,
+  },
+];
+
+const lookbookCards = [
+  {
+    title: "Urban Minimal",
+    image:
+      "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&q=80&w=1200",
+    copy: "Clean silhouettes and neutral layers for daily wear.",
+  },
+  {
+    title: "Resort Tailored",
+    image:
+      "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&q=80&w=1200",
+    copy: "Light textures, polished tones, and elevated details.",
+  },
+];
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("featured");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterSource, setFilterSource] = useState<"user" | "ai">("user");
+
   const normalizeCategory = (raw: string): string => {
     const value = raw.trim().toLowerCase();
     if (value === "all") return "all";
@@ -19,13 +53,14 @@ export default function Home() {
     if (value === "footwear") return "Footwear";
     return "all";
   };
+
   const hasActiveFilters =
     activeCategory !== "all" || sortBy !== "featured" || searchQuery.trim().length > 0;
-  
+
   const { data: products, isLoading, error } = useProducts({
     category: activeCategory,
     sort: sortBy,
-    search: searchQuery
+    search: searchQuery,
   });
 
   useEffect(() => {
@@ -38,6 +73,7 @@ export default function Home() {
       }
       setFilterSource(e.detail?.source === "ai" ? "ai" : "user");
     };
+
     const handleSort = (e: any) => {
       const detail = e.detail;
       const nextSort = typeof detail === "string" ? detail : detail?.sortBy;
@@ -46,12 +82,13 @@ export default function Home() {
       }
       setFilterSource(detail?.source === "ai" ? "ai" : "user");
     };
-    
-    window.addEventListener('search-products', handleSearch);
-    window.addEventListener('sort-products', handleSort);
+
+    window.addEventListener("search-products", handleSearch);
+    window.addEventListener("sort-products", handleSort);
+
     return () => {
-      window.removeEventListener('search-products', handleSearch);
-      window.removeEventListener('sort-products', handleSort);
+      window.removeEventListener("search-products", handleSearch);
+      window.removeEventListener("sort-products", handleSort);
     };
   }, []);
 
@@ -92,7 +129,6 @@ export default function Home() {
 
   const filteredProducts = products || [];
 
-  // Categories derived from mock data logic or hardcoded for UI
   const categories = [
     { id: "all", label: "All" },
     { id: "Clothing", label: "Clothing" },
@@ -101,85 +137,140 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen bg-background font-sans">
+    <div className="min-h-screen bg-[#f3f4f6] text-[#161a23] overflow-x-hidden">
       <Navigation />
       <CartDrawer />
 
-      {/* Hero Section */}
-      <section className="relative min-h-[80vh] flex items-center justify-center px-4 pt-20 overflow-hidden bg-[#0a0a0b]">
-        {/* Dark Wash Hero Image Background */}
-        <div className="absolute inset-0 z-0">
-          <img 
-            src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&q=80&w=2000" 
-            className="w-full h-full object-cover opacity-60"
-            alt="Hero Background"
+      <section className="relative isolate min-h-[92vh] px-4 pt-28 pb-20 overflow-hidden">
+        <div className="absolute inset-0">
+          <img
+            src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=2000"
+            alt="Fashion editorial backdrop"
+            className="h-full w-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-[#0a0a0b]" />
+          <div className="absolute inset-0 bg-[linear-gradient(125deg,rgba(8,11,20,0.88),rgba(8,11,20,0.62)_42%,rgba(176,106,52,0.35))]" />
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto text-center space-y-8">
+        <div className="absolute -left-16 top-28 h-72 w-72 rounded-full bg-[#d6a36f]/30 blur-3xl" />
+        <div className="absolute right-0 bottom-0 h-80 w-80 rounded-full bg-[#5f8ea3]/30 blur-3xl" />
+
+        <div className="relative z-10 mx-auto max-w-7xl">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="max-w-3xl"
+          >
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-5 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-white/90 backdrop-blur-md">
+              <Sparkles className="h-3.5 w-3.5" />
+              Spring 2026 Collection
+            </div>
+            <h1 className="mt-8 text-5xl font-bold leading-[1.04] text-white sm:text-6xl lg:text-7xl">
+              Luxury Essentials
+              <br />
+              Engineered for Modern Living
+            </h1>
+            <p className="mt-6 max-w-xl text-base leading-relaxed text-white/75 sm:text-lg">
+              Discover refined fashion and lifestyle pieces from premium houses, curated with
+              intelligent recommendations and elevated visual storytelling.
+            </p>
+
+            <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+              <button
+                onClick={() => document.getElementById("products")?.scrollIntoView({ behavior: "smooth" })}
+                className="group inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-3.5 text-sm font-semibold uppercase tracking-wider text-[#121722] transition-all hover:scale-[1.03]"
+              >
+                Shop The Drop
+                <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              </button>
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent("toggle-clerk"))}
+                className="inline-flex items-center justify-center rounded-full border border-white/45 bg-white/10 px-8 py-3.5 text-sm font-semibold uppercase tracking-wider text-white backdrop-blur-md transition-all hover:bg-white/20"
+              >
+                Open AI Stylist
+              </button>
+            </div>
+          </motion.div>
+
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 0.8, delay: 0.25 }}
+            className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-3"
           >
-            <h1 className="font-display text-6xl md:text-8xl font-bold text-white mb-6 leading-[1.1]">
-              Elevate Your <br />
-              <span className="text-white/90 italic font-medium">Daily Rituals</span>
-            </h1>
-            <p className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto mb-12 font-light leading-relaxed">
-              Experience a meticulously curated collection of premium essentials. 
-              Refined by design, guided by intelligence.
-            </p>
-          </motion.div>
-          
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.4, duration: 0.8 }}
-            className="flex flex-col sm:flex-row justify-center gap-4"
-          >
-            <button 
-              onClick={() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' })}
-              className="px-10 py-4 bg-white text-black rounded-full font-medium hover:bg-white/90 transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-white/10"
-            >
-              Explore Collection
-            </button>
-            <button 
-              onClick={() => window.dispatchEvent(new CustomEvent('toggle-clerk'))}
-              className="px-10 py-4 glass text-white rounded-full font-medium hover:bg-white/10 transition-all hover:scale-105 active:scale-95"
-            >
-              Consult the Clerk
-            </button>
+            {highlightItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div
+                  key={item.title}
+                  className="rounded-3xl border border-white/20 bg-white/10 p-5 backdrop-blur-xl"
+                >
+                  <Icon className="h-5 w-5 text-white" />
+                  <h3 className="mt-4 text-sm font-semibold uppercase tracking-[0.2em] text-white">
+                    {item.title}
+                  </h3>
+                  <p className="mt-2 text-sm text-white/70">{item.text}</p>
+                </div>
+              );
+            })}
           </motion.div>
         </div>
       </section>
 
-      {/* Products Section */}
-      <section id="products" className="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col space-y-12">
-          {/* Header & Search */}
-          <div className="flex flex-col md:flex-row justify-between items-end gap-8 border-b border-border/50 pb-12">
-            <div className="space-y-4 max-w-md">
-              <h2 className="text-4xl font-bold">The Catalog</h2>
-              <p className="text-muted-foreground">Filter by category or search our refined inventory.</p>
-              
-              <div className="relative group">
-                <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
+      <section className="mx-auto -mt-10 max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="rounded-[2rem] border border-[#d8dce5] bg-white/85 p-4 shadow-[0_24px_80px_-32px_rgba(13,17,28,0.55)] backdrop-blur-xl sm:p-8">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            {lookbookCards.map((card, idx) => (
+              <motion.article
+                key={card.title}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.35 }}
+                transition={{ duration: 0.6, delay: idx * 0.15 }}
+                className="group relative overflow-hidden rounded-[1.6rem]"
+              >
+                <img
+                  src={card.image}
+                  alt={card.title}
+                  className="h-64 w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#090d17]/85 via-[#090d17]/20 to-transparent" />
+                <div className="absolute bottom-0 p-6 text-white">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/75">Lookbook</p>
+                  <h3 className="mt-2 text-2xl font-semibold">{card.title}</h3>
+                  <p className="mt-2 text-sm text-white/75">{card.copy}</p>
+                </div>
+              </motion.article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="products" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+        <div className="rounded-[2rem] border border-[#d7dbe4] bg-white/85 p-6 shadow-[0_22px_70px_-40px_rgba(21,27,43,0.8)] backdrop-blur-xl sm:p-10">
+          <div className="flex flex-col gap-8 border-b border-[#e4e7ef] pb-10 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-lg">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#b0763f]">Collections</p>
+              <h2 className="mt-3 text-4xl font-bold text-[#101522]">Curated Product Gallery</h2>
+              <p className="mt-3 text-sm text-[#556074] sm:text-base">
+                Use search, categories, and sort controls to find exact pieces from the premium catalog.
+              </p>
+
+              <div className="relative mt-6">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7a869d]" />
                 <input
                   type="text"
-                  placeholder="Search..."
+                  placeholder="Search by name, style, or material"
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
                     setFilterSource("user");
                   }}
-                  className="w-full pl-12 pr-4 py-3 bg-muted/50 border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all placeholder:font-light"
+                  className="w-full rounded-2xl border border-[#d6dce8] bg-white py-3 pl-11 pr-4 text-sm outline-none transition-all placeholder:text-[#8f9bb0] focus:border-[#b0763f] focus:ring-4 focus:ring-[#b0763f]/15"
                 />
               </div>
             </div>
 
-            {/* Filters */}
             <div className="flex flex-wrap items-center gap-3">
               {categories.map((cat) => (
                 <button
@@ -188,29 +279,30 @@ export default function Home() {
                     setActiveCategory(cat.id);
                     setFilterSource("user");
                   }}
-                  className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all ${
+                  className={`rounded-full px-5 py-2.5 text-xs font-semibold uppercase tracking-wider transition-all ${
                     activeCategory === cat.id
-                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                      : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                      ? "bg-[#131a2a] text-white shadow-lg"
+                      : "border border-[#d6dce8] bg-white text-[#4f5b71] hover:border-[#b0763f]/60 hover:text-[#131a2a]"
                   }`}
                 >
                   {cat.label}
                 </button>
               ))}
-              <div className="h-6 w-px bg-border/50 mx-2" />
+
               <select
                 value={sortBy}
                 onChange={(e) => {
                   setSortBy(e.target.value);
                   setFilterSource("user");
                 }}
-                className="bg-transparent text-sm font-medium focus:outline-none cursor-pointer hover:text-primary transition-colors pr-2"
+                className="rounded-full border border-[#d6dce8] bg-white px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-[#4f5b71] outline-none transition-colors hover:border-[#b0763f]/60"
               >
                 <option value="featured">Featured</option>
                 <option value="price_asc">Price: Low-High</option>
                 <option value="price_desc">Price: High-Low</option>
                 <option value="rating">Top Rated</option>
               </select>
+
               {hasActiveFilters && (
                 <button
                   onClick={() => {
@@ -219,7 +311,7 @@ export default function Home() {
                     setSearchQuery("");
                     setFilterSource("user");
                   }}
-                  className="px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider bg-muted/70 hover:bg-muted text-muted-foreground"
+                  className="rounded-full border border-[#e2c9ad] bg-[#f8f0e7] px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-[#8d5d2f] transition-colors hover:bg-[#f3e6d9]"
                 >
                   Reset
                 </button>
@@ -227,82 +319,85 @@ export default function Home() {
             </div>
           </div>
 
-        </div>
-
-        {/* Grid */}
-        {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-              <div key={n} className="bg-white rounded-2xl h-[400px] animate-pulse border border-border/50 p-4 shadow-sm">
-                <div className="bg-muted h-[250px] rounded-xl mb-4" />
-                <div className="h-4 bg-muted rounded w-3/4 mb-2" />
-                <div className="h-4 bg-muted rounded w-1/4" />
+          <div className="mt-10">
+            {isLoading ? (
+              <div className="grid grid-cols-1 gap-7 sm:grid-cols-2 lg:grid-cols-4">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                  <div
+                    key={n}
+                    className="h-[390px] animate-pulse rounded-3xl border border-[#d8deea] bg-white p-4"
+                  >
+                    <div className="mb-4 h-[240px] rounded-2xl bg-[#edf1f7]" />
+                    <div className="h-4 w-3/4 rounded bg-[#edf1f7]" />
+                    <div className="mt-3 h-4 w-1/4 rounded bg-[#edf1f7]" />
+                  </div>
+                ))}
               </div>
-            ))}
+            ) : error ? (
+              <div className="rounded-3xl border border-dashed border-[#d8deea] bg-[#f6f8fc] py-16 text-center">
+                <h3 className="text-xl font-semibold text-[#131a2a]">Unable to load products</h3>
+                <p className="mt-2 text-[#60708a]">Refresh once to reconnect to the catalog.</p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="mt-6 rounded-full bg-[#131a2a] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1f2a42]"
+                >
+                  Reload
+                </button>
+              </div>
+            ) : filteredProducts.length === 0 ? (
+              <div className="rounded-3xl border border-dashed border-[#d8deea] bg-[#f6f8fc] py-16 text-center">
+                <h3 className="text-xl font-semibold text-[#131a2a]">No products matched</h3>
+                <p className="mt-2 text-[#60708a]">Try a broader search or switch categories.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+                {filteredProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            )}
           </div>
-        ) : error ? (
-          <div className="text-center py-20 bg-muted/30 rounded-3xl border border-dashed border-border">
-            <h3 className="text-xl font-semibold mb-2">Something went wrong</h3>
-            <p className="text-muted-foreground mb-4">We couldn't load the products.</p>
-            <button 
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
-            >
-              Try Again
-            </button>
-          </div>
-        ) : filteredProducts.length === 0 ? (
-          <div className="text-center py-20 bg-muted/10 rounded-3xl border border-dashed border-border">
-            <h3 className="text-xl font-semibold mb-2">No products found</h3>
-            <p className="text-muted-foreground">Try adjusting your search or filters.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 gap-y-12">
-            {filteredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        )}
+        </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-foreground text-background py-16">
-        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-12">
+      <footer className="border-t border-[#d8dce6] bg-[#101521] py-14 text-white">
+        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 px-4 sm:px-6 lg:grid-cols-4 lg:px-8">
           <div>
-            <div className="font-display font-bold text-2xl mb-4">Shopkeeper</div>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              Premium essentials for the modern lifestyle. 
-              Quality curated by AI, delivered by humans.
+            <p className="text-xs font-semibold uppercase tracking-[0.23em] text-[#c9a47a]">Shopkeeper</p>
+            <h3 className="mt-3 text-2xl font-semibold">Premium Commerce House</h3>
+            <p className="mt-3 text-sm text-white/65">
+              Elevated catalog experiences with intelligent discovery and contemporary design.
             </p>
           </div>
           <div>
-            <h4 className="font-bold mb-4">Shop</h4>
-            <ul className="space-y-2 text-gray-400 text-sm">
-              <li>All Products</li>
+            <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-white/85">Explore</h4>
+            <ul className="mt-4 space-y-2 text-sm text-white/60">
               <li>New Arrivals</li>
-              <li>Featured</li>
-              <li>Discounts</li>
+              <li>Editorial Picks</li>
+              <li>Trending This Week</li>
+              <li>Gift Guide</li>
             </ul>
           </div>
           <div>
-            <h4 className="font-bold mb-4">Support</h4>
-            <ul className="space-y-2 text-gray-400 text-sm">
-              <li>FAQ</li>
+            <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-white/85">Support</h4>
+            <ul className="mt-4 space-y-2 text-sm text-white/60">
+              <li>Contact</li>
               <li>Shipping & Returns</li>
-              <li>Privacy Policy</li>
-              <li>Terms of Service</li>
+              <li>Warranty</li>
+              <li>Privacy</li>
             </ul>
           </div>
           <div>
-            <h4 className="font-bold mb-4">Newsletter</h4>
-            <div className="flex gap-2">
-              <input 
-                type="email" 
-                placeholder="Enter your email" 
-                className="bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary"
+            <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-white/85">Private Access</h4>
+            <p className="mt-4 text-sm text-white/60">Get first access to drops and premium offers.</p>
+            <div className="mt-4 flex gap-2">
+              <input
+                type="email"
+                placeholder="Email address"
+                className="w-full rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-sm text-white outline-none placeholder:text-white/40 focus:border-[#c9a47a]"
               />
-              <button className="px-4 py-2 bg-primary rounded-lg font-medium hover:bg-primary/90 transition-colors">
-                Subscribe
+              <button className="rounded-full bg-[#c9a47a] px-4 py-2.5 text-sm font-semibold text-[#111726] hover:bg-[#d8b48f]">
+                Join
               </button>
             </div>
           </div>

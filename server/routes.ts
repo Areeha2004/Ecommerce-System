@@ -31,11 +31,15 @@ type ProductCardData = {
   url: string;
 };
 
+type ShopperGenderPreference = "male" | "female" | null;
+type ProductAudience = "male" | "female" | "unisex";
+
 type ShopperProfile = {
   viewedCategories: string[];
   addedProductIds: number[];
   recentlyViewedProductIds: number[];
   preferredSort: "price_asc" | "price_desc" | "rating" | null;
+  genderPreference: ShopperGenderPreference;
   lastMentionedProductId: number | null;
   lastShownProductIds: number[];
   lastQuery: string;
@@ -76,6 +80,7 @@ function getOrCreateProfile(sessionId: string): ShopperProfile {
     addedProductIds: [],
     recentlyViewedProductIds: [],
     preferredSort: null,
+    genderPreference: null,
     lastMentionedProductId: null,
     lastShownProductIds: [],
     lastQuery: "",
@@ -274,9 +279,63 @@ function inferProductVibes(product: Product): string[] {
   return Array.from(vibes);
 }
 
+function inferProductAudience(product: Product): ProductAudience {
+  const haystack = normalizeText(`${product.name} ${product.description} ${product.category}`);
+  if (/\b(dress|maxi|skirt|blouse|women|woman|female|lady|ladies)\b/.test(haystack)) return "female";
+  if (/\b(men|man|male|gentleman|gentlemen|oxford|chino|loafer|chelsea|tie)\b/.test(haystack)) return "male";
+  return "unisex";
+}
+
+function filterProductsByGenderPreference(
+  products: Product[],
+  preference: ShopperGenderPreference,
+): Product[] {
+  if (!preference) return products;
+  return products.filter((product) => {
+    const audience = inferProductAudience(product);
+    return audience === "unisex" || audience === preference;
+  });
+}
+
+function detectGenderPreference(message: string): ShopperGenderPreference | undefined {
+  const normalized = normalizeText(message);
+  if (!normalized) return undefined;
+
+  if (
+    /\b(unisex|both genders|both gender|men and women|women and men|male and female|for everyone|for all)\b/.test(
+      normalized,
+    )
+  ) {
+    return null;
+  }
+
+  const male = /\b(male|man|men|boy|boys|guy|guys|gentleman|gentlemen|gents|boi|biy)\b/.test(normalized);
+  const female = /\b(female|woman|women|girl|girls|lady|ladies)\b/.test(normalized);
+
+  if (male && !female) return "male";
+  if (female && !male) return "female";
+  return undefined;
+}
+
+function messageContainsAlias(normalizedMessage: string, tokenSet: Set<string>, alias: string): boolean {
+  const normalizedAlias = normalizeText(alias);
+  if (!normalizedAlias) return false;
+
+  if (normalizedAlias.includes(" ")) {
+    return normalizedMessage.includes(normalizedAlias);
+  }
+
+  if (tokenSet.has(normalizedAlias)) return true;
+  // Common typo: missing space after article (e.g. "ahat", "abag", "atie").
+  if (normalizedAlias.length >= 3 && tokenSet.has(`a${normalizedAlias}`)) return true;
+
+  return false;
+}
+
 function detectIntentSignals(message: string, catalog: Product[]): IntentSignals {
   const normalizedMessage = normalizeText(message);
   const tokens = tokenizeSearchQuery(normalizedMessage);
+  const tokenSet = new Set(tokens);
   const categories = new Set(catalog.map((product) => product.category));
   let category: string | undefined;
   const productTypes = new Set<string>();
@@ -293,17 +352,18 @@ function detectIntentSignals(message: string, catalog: Product[]): IntentSignals
     boots: ["boots", "boot"],
     loafers: ["loafers", "loafer"],
     shoes: ["shoes", "shoe", "shoez", "footwear", "footware", "fowear", "sneakers", "sneaker", "espadrilles", "espadrille"],
-    ties: ["ties", "tie"],
+    tie: ["ties", "tie"],
     shirts: ["shirts", "shirt", "oxford shirt"],
     dress: ["dress", "dresses"],
     blazer: ["blazer", "blazers"],
     chinos: ["chinos", "chino"],
     sunglasses: ["sunglasses", "sunglass", "sun glasses", "shade", "shades", "aviator"],
     watch: ["watch", "watches"],
+    hat: ["hat", "hats", "fedora", "fedoras"],
     bag: ["bag", "bags", "tote", "duffel"],
   };
   for (const [type, aliases] of Object.entries(typeAliases)) {
-    if (aliases.some((alias) => normalizedMessage.includes(alias))) {
+    if (aliases.some((alias) => messageContainsAlias(normalizedMessage, tokenSet, alias))) {
       productTypes.add(type);
     }
   }
@@ -502,10 +562,36 @@ async function aiSelectProducts(
 
   let usedCategoryFallback = false;
   if (products.length === 0 && category) {
-    products = catalog
+    let fallback = catalog
       .filter((product) => product.category === category)
       .sort((a, b) => Number(b.rating) - Number(a.rating))
-      .slice(0, limit);
+      .slice(0, Math.max(limit * 2, limit));
+
+    if (options?.productTypes && options.productTypes.length > 0) {
+      const byType = fallback.filter((product) => {
+        const types = inferProductTypes(product);
+        return options.productTypes?.some((type) => types.includes(type));
+      });
+      if (byType.length > 0) {
+        fallback = byType;
+      } else {
+        fallback = [];
+      }
+    }
+
+    if (fallback.length > 0 && options?.vibes && options.vibes.length > 0) {
+      const byVibe = fallback.filter((product) => {
+        const vibes = inferProductVibes(product);
+        return options.vibes?.some((vibe) => vibes.includes(vibe));
+      });
+      if (byVibe.length > 0) {
+        fallback = byVibe;
+      } else {
+        fallback = [];
+      }
+    }
+
+    products = fallback.slice(0, limit);
     usedCategoryFallback = products.length > 0;
   }
 
@@ -548,6 +634,27 @@ function extractRequestedColor(message: string): string | null {
     if (normalized.includes(color)) return color;
   }
   return null;
+}
+
+function isColorOptionsRequest(message: string): boolean {
+  const normalized = normalizeText(message);
+  if (!normalized) return false;
+
+  const mentionsColors = /\b(color|colors|colour|colours|shade|shades|colorway|colorways|variant|variants)\b/i.test(
+    normalized,
+  );
+  if (!mentionsColors) return false;
+
+  return /\b(other|another|more|available|options|option|what|which|show|list|have|has|comes|come|different|else)\b/i.test(
+    normalized,
+  );
+}
+
+function formatColorList(colors: string[]): string {
+  if (colors.length === 0) return "no listed colors right now";
+  if (colors.length === 1) return colors[0];
+  if (colors.length === 2) return `${colors[0]} and ${colors[1]}`;
+  return `${colors.slice(0, -1).join(", ")}, and ${colors[colors.length - 1]}`;
 }
 
 function findDirectProductMention(message: string, products: Product[]): Product | null {
@@ -610,6 +717,7 @@ function profileActivitySummary(profile: ShopperProfile): string {
     addedProductIds: profile.addedProductIds.slice(-10),
     recentlyViewedProductIds: profile.recentlyViewedProductIds.slice(-10),
     preferredSort: profile.preferredSort,
+    genderPreference: profile.genderPreference,
     lastMentionedProductId: profile.lastMentionedProductId,
   });
 }
@@ -712,7 +820,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "A non-empty message is required." });
       }
 
-      const productCatalog = await storage.getProducts();
+      const allProductCatalog = await storage.getProducts();
       const sessionId = getSessionId(req, res);
       const profile = getOrCreateProfile(sessionId);
       profile.lastQuery = message;
@@ -749,6 +857,14 @@ export async function registerRoutes(
       if (contextLastSuggestedId != null) {
         profile.lastMentionedProductId = contextLastSuggestedId;
       }
+
+      const detectedGenderPreference = detectGenderPreference(message);
+      if (detectedGenderPreference !== undefined) {
+        profile.genderPreference = detectedGenderPreference;
+      }
+
+      const genderScopedCatalog = filterProductsByGenderPreference(allProductCatalog, profile.genderPreference);
+      const productCatalog = genderScopedCatalog.length > 0 ? genderScopedCatalog : allProductCatalog;
 
       const normalizedMessage = message.toLowerCase();
       const intentSignals = detectIntentSignals(message, productCatalog);
@@ -792,6 +908,44 @@ export async function registerRoutes(
       const explicitBrowseIntent = /(show|find|looking for|search|recommend|suggest|browse|i need|i want some)/i.test(
         normalizedMessage,
       );
+      const wantsColorOptions = isColorOptionsRequest(message);
+      const hasCommercialIntent =
+        intentSignals.wantsProducts ||
+        wantsAddToCart ||
+        wantsDiscount ||
+        wantsColorOptions ||
+        /(checkout|purchase|cart|coupon|deal|discount)/i.test(normalizedMessage);
+
+      if (detectedGenderPreference !== undefined && !hasCommercialIntent) {
+        const cards = [...productCatalog]
+          .sort((a, b) => Number(b.rating) - Number(a.rating))
+          .slice(0, 4)
+          .map(toProductCard);
+        const preferenceLabel =
+          profile.genderPreference === "male"
+            ? "men"
+            : profile.genderPreference === "female"
+              ? "women"
+              : "everyone";
+        const assistantText = `Perfect, I will tailor picks for ${preferenceLabel}. Here are strong options to start:`;
+        if (cards.length > 0) {
+          profile.lastShownProductIds = cards.map((p) => p.id);
+          profile.lastMentionedProductId = cards[0]?.id ?? profile.lastMentionedProductId;
+        }
+        return res.json({
+          message: assistantText,
+          content: assistantText,
+          action: null,
+          actions: [],
+          products: cards,
+          tool_calls: [],
+          data: {
+            productsCount: cards.length,
+            personalized: true,
+          },
+          role: "assistant",
+        });
+      }
 
       const directProduct = findDirectProductMention(message, productCatalog);
       const lastMentionedProduct =
@@ -857,6 +1011,51 @@ export async function registerRoutes(
           data: {
             productsCount: 1,
             personalized: true,
+          },
+          role: "assistant",
+        });
+      }
+
+      // Deterministic color listing behavior for natural queries like "other colors?".
+      if (wantsColorOptions && resolvedProduct) {
+        const colorList = formatColorList(resolvedProduct.colors);
+        const matchedRequestedColor = requestedColor
+          ? resolvedProduct.colors.find((c) => colorMatches(requestedColor, c)) ?? null
+          : null;
+        profile.lastMentionedProductId = resolvedProduct.id;
+        profile.lastShownProductIds = [resolvedProduct.id];
+        profile.viewedCategories.push(resolvedProduct.category);
+
+        const assistantText = matchedRequestedColor
+          ? `${resolvedProduct.name} comes in ${colorList}. And yes, ${matchedRequestedColor} is available.`
+          : `${resolvedProduct.name} is available in ${colorList}.`;
+
+        return res.json({
+          message: assistantText,
+          content: assistantText,
+          action: null,
+          actions: [],
+          products: [toProductCard(resolvedProduct)],
+          tool_calls: [],
+          data: {
+            productsCount: 1,
+            personalized: true,
+          },
+          role: "assistant",
+        });
+      }
+      if (wantsColorOptions && !resolvedProduct) {
+        const assistantText = "I can check that. Tell me the product name and I will list every available color.";
+        return res.json({
+          message: assistantText,
+          content: assistantText,
+          action: null,
+          actions: [],
+          products: [],
+          tool_calls: [],
+          data: {
+            productsCount: 0,
+            personalized: false,
           },
           role: "assistant",
         });
@@ -974,6 +1173,7 @@ Rules:
 - Prefer actionable responses over generic descriptions.
 - When products are available, mention they are shown as cards with links.
 - When calling search_products, include a category from the inventory when it is clear.
+- Always honor customer gender preference in context when picking products (allow unisex too).
 
 Customer context:
 ${profileActivitySummary(profile)}
@@ -1195,7 +1395,7 @@ ${profileActivitySummary(profile)}
                   ? `Yep, ${found.name} is available in ${requestedColor}.`
                   : `${found.name} is not available in ${requestedColor}, but I can show close options.`;
               } else {
-                forcedAssistantText = `${found.name} is in stock, and we’ve got ${found.stock} left right now.`;
+                forcedAssistantText = `${found.name} is in stock, and available colors are ${formatColorList(found.colors)}.`;
               }
 
               toolResult = {
@@ -1371,7 +1571,7 @@ ${profileActivitySummary(profile)}
         if (intentResolved.length > 0) {
           const allowedIds = new Set(intentResolved.map((p) => p.id));
           const currentlyAligned = uiProducts.filter((card) => allowedIds.has(card.id));
-          if (currentlyAligned.length === 0) {
+          if (currentlyAligned.length !== uiProducts.length || currentlyAligned.length === 0) {
             uiProducts.length = 0;
             uiProducts.push(...intentResolved.map(toProductCard));
 
@@ -1489,3 +1689,4 @@ ${profileActivitySummary(profile)}
 
   return httpServer;
 }
+

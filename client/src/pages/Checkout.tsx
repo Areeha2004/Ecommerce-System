@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Check, CreditCard, Loader2, Lock } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { colorToCss } from "@/lib/color-utils";
 
 export default function Checkout() {
   const { items, finalTotal, clearCart } = useCart();
@@ -122,10 +123,19 @@ export default function Checkout() {
                 {items.map(item => (
                   <div key={`${item.id}-${item.selectedColor}`} className="flex gap-3 text-sm">
                     <div className="w-12 h-12 bg-muted rounded-md overflow-hidden flex-shrink-0">
-                      <img src={item.image} className="w-full h-full object-cover" />
+                      <img src={item.image} className="w-full h-full object-cover" alt={item.name} />
                     </div>
                     <div className="flex-1">
                       <p className="font-medium line-clamp-1">{item.name}</p>
+                      {item.selectedColor && (
+                        <p className="text-muted-foreground inline-flex items-center gap-1.5">
+                          <span
+                            className="h-3 w-3 rounded-full border border-border"
+                            style={{ background: colorToCss(item.selectedColor) }}
+                          />
+                          {item.selectedColor}
+                        </p>
+                      )}
                       <p className="text-muted-foreground">Qty: {item.quantity}</p>
                     </div>
                     <p className="font-medium">${(Number(item.price) * item.quantity).toFixed(2)}</p>

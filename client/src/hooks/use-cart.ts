@@ -13,8 +13,8 @@ interface CartState {
   discountCode: string | null;
   discountAmount: number;
   addToCart: (product: Product, quantity?: number, color?: string) => void;
-  removeFromCart: (productId: number) => void;
-  updateQuantity: (productId: number, quantity: number) => void;
+  removeFromCart: (productId: number, color?: string) => void;
+  updateQuantity: (productId: number, quantity: number, color?: string) => void;
   clearCart: () => void;
   toggleCart: () => void;
   setDiscount: (code: string, amount: number) => void;
@@ -31,12 +31,13 @@ export const useCart = create<CartState>()(
       discountAmount: 0,
       
       addToCart: (product, quantity = 1, color) => set((state) => {
-        const existingItem = state.items.find(item => item.id === product.id && item.selectedColor === color);
+        const resolvedColor = color?.trim() || product.colors?.[0] || undefined;
+        const existingItem = state.items.find(item => item.id === product.id && item.selectedColor === resolvedColor);
         
         if (existingItem) {
           return {
             items: state.items.map(item => 
-              (item.id === product.id && item.selectedColor === color)
+              (item.id === product.id && item.selectedColor === resolvedColor)
                 ? { ...item, quantity: item.quantity + quantity }
                 : item
             ),
@@ -45,21 +46,28 @@ export const useCart = create<CartState>()(
         }
         
         return {
-          items: [...state.items, { ...product, quantity, selectedColor: color }],
+          items: [...state.items, { ...product, quantity, selectedColor: resolvedColor }],
           isOpen: true,
         };
       }),
       
-      removeFromCart: (productId) => set((state) => ({
-        items: state.items.filter(item => item.id !== productId)
+      removeFromCart: (productId, color) => set((state) => ({
+        items: state.items.filter(item => {
+          if (item.id !== productId) return true;
+          if (typeof color === "string") return item.selectedColor !== color;
+          return false;
+        })
       })),
       
-      updateQuantity: (productId, quantity) => set((state) => ({
-        items: state.items.map(item => 
-          item.id === productId 
-            ? { ...item, quantity: Math.max(0, quantity) }
-            : item
-        ).filter(item => item.quantity > 0)
+      updateQuantity: (productId, quantity, color) => set((state) => ({
+        items: state.items.map(item => {
+          const isTargetProduct = item.id === productId;
+          const isTargetColor = typeof color === "string" ? item.selectedColor === color : true;
+          if (isTargetProduct && isTargetColor) {
+            return { ...item, quantity: Math.max(0, quantity) };
+          }
+          return item;
+        }).filter(item => item.quantity > 0)
       })),
       
       clearCart: () => set({ items: [], discountCode: null, discountAmount: 0 }),
